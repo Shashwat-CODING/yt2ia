@@ -6,6 +6,7 @@ import uuid
 import os
 import threading
 import time
+import requests
 
 from database import init_db, get_all_entries, clear_all_entries
 from worker import handle_submission, STATUS
@@ -141,6 +142,14 @@ async def get_meta(id: str):
     except Exception as e:
         return {"error": str(e)}
 
+@app.post("/api/queue/remove/{id}")
+async def remove_item_from_queue(id: str):
+    try:
+        remove_from_queue(id)
+        return {"message": "Removed from queue", "id": id}
+    except Exception as e:
+        return {"error": str(e)}
+
 # Submit artist
 class SubmitArtistRequest(BaseModel):
     browse_id: str
@@ -183,6 +192,11 @@ def on_startup():
     init_db()
     init_queue_db()
     start_queue_processor()
+    start_keep_alive()
+
+@app.get("/admin", response_class=HTMLResponse)
+async def admin_dashboard(request: Request):
+    return templates.TemplateResponse("admin.html", {"request": request})
 
 @app.get("/", response_class=HTMLResponse)
 async def read_root(request: Request):
@@ -232,6 +246,27 @@ def start_queue_processor():
     thread = threading.Thread(target=queue_processor, daemon=True)
     thread.start()
     print("Queue processor thread started")
+
+# Keep Alive Pinger
+def keep_alive_pinger():
+    url = "https://yt2ia.onrender.com"
+    print(f"Keep-alive pinger started for {url}")
+    while True:
+        try:
+            time.sleep(4)
+            # Just a HEAD request to keep it alive is usually enough, but GET is safer if HEAD isn't handled
+            # Using verify=False just in case of local/cert issues, though not ideal for prod
+            try:
+               requests.get(url, timeout=5)
+            except:
+               pass
+        except Exception as e:
+            # Silently ignore errors to avoid log spam
+            pass
+
+def start_keep_alive():
+    thread = threading.Thread(target=keep_alive_pinger, daemon=True)
+    thread.start()
 
 # SSE Stream
 import asyncio

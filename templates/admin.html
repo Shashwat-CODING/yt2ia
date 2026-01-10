@@ -1,0 +1,270 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>YT2IA - Admin Dashboard</title>
+    <style>
+        :root {
+            --bg-color: #0f172a;
+            --card-bg: #1e293b;
+            --text-primary: #f8fafc;
+            --text-secondary: #94a3b8;
+            --accent-color: #3b82f6;
+            --accent-hover: #2563eb;
+            --danger-color: #ef4444;
+            --danger-hover: #dc2626;
+            --border-color: #334155;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-primary);
+            line-height: 1.6;
+            padding: 2rem;
+        }
+
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+        }
+
+        header {
+            margin-bottom: 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: 1rem;
+        }
+
+        h1 {
+            font-size: 1.5rem;
+            font-weight: 700;
+        }
+
+        .refresh-btn {
+            background-color: var(--accent-color);
+            color: white;
+            border: none;
+            padding: 0.5rem 1rem;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 500;
+            transition: background 0.2s;
+        }
+
+        .refresh-btn:hover {
+            background-color: var(--accent-hover);
+        }
+
+        .queue-table {
+            width: 100%;
+            border-collapse: collapse;
+            background-color: var(--card-bg);
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+        }
+
+        .queue-table th,
+        .queue-table td {
+            padding: 1rem;
+            text-align: left;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .queue-table th {
+            background-color: #0f172a;
+            color: var(--text-secondary);
+            font-weight: 600;
+            font-size: 0.875rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .queue-table tr:last-child td {
+            border-bottom: none;
+        }
+
+        .queue-table tr:hover {
+            background-color: rgba(255, 255, 255, 0.02);
+        }
+
+        .artist-info {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .artist-avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            object-fit: cover;
+            background-color: var(--border-color);
+        }
+
+        .artist-name {
+            font-weight: 500;
+        }
+
+        .id-cell {
+            font-family: monospace;
+            color: var(--text-secondary);
+        }
+
+        .action-btn {
+            background-color: var(--danger-color);
+            color: white;
+            border: none;
+            padding: 0.35rem 0.75rem;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 0.875rem;
+            transition: background 0.2s;
+        }
+
+        .action-btn:hover {
+            background-color: var(--danger-hover);
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 3rem;
+            color: var(--text-secondary);
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <header>
+            <h1>Queue Management</h1>
+            <button class="refresh-btn" onclick="fetchQueue()">Refresh List</button>
+        </header>
+
+        <div id="queue-container">
+            <!-- Table will be injected here -->
+        </div>
+    </div>
+
+    <script>
+        const metaCache = JSON.parse(localStorage.getItem('yt2ia_meta_cache') || '{}');
+
+        async function getArtistMeta(id) {
+            if (metaCache[id]) return metaCache[id];
+
+            try {
+                const res = await fetch(`/api/meta?id=${id}`);
+                const data = await res.json();
+                if (data && data.name) {
+                     const meta = {
+                        name: data.name,
+                        avatar: (data.thumbnails && data.thumbnails.length > 0) ? data.thumbnails[0].url : null
+                    };
+                    metaCache[id] = meta;
+                    localStorage.setItem('yt2ia_meta_cache', JSON.stringify(metaCache));
+                    return meta;
+                }
+            } catch (e) {
+                 console.error("Meta fetch error", e);
+              return { name: 'Unknown Artist', avatar: null };
+        }
+
+        async function removeItem(id) {
+            if (!confirm(`Are you sure you want to remove ${id}?`)) return;
+            
+            try {
+                const res = await fetch(`/api/queue/remove/${id}`, { method: 'POST' });
+                const data = await res.json();
+   (data.error) {
+                    alert('Error: ' + data.error);
+                } else {
+                    fetchQueue(); // Refresh
+                }
+            } catch (e) {
+                alert('Request failed: ' + e);
+            }
+        }
+
+        async function fetchQueue() {
+            const container = document.getElementById('queue-container');
+            container.innerHTML = '<div style="padding: 2rem; text-align: center;">Loading...</div>';
+
+            try {
+                const res = await fetch('/api/queue');
+                const data = await res.json();
+                const items = data.items || [];
+
+                if (items.length === 0) {
+                    container.innerHTML = '<div class="empty-state">Queue is empty</div>';
+                    return;
+                }
+
+                let html = `
+                    <table class="queue-table">
+                        <thead>
+                            <tr>
+                                <th>Artist / Item</th>
+                                <th>ID</th>
+                                <th>Action</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                `;
+
+                // Render rows immediately with placeholders, then update with meta
+                for (const id of items) {
+                    html += `
+                        <tr id="row-${id}">
+                            <td>
+                                <div class="artist-i                      <div class="artist-avatar" id="avatar-${id}" style="background-color: #334155;"></div>
+                                    <span class="artist-name" id="name-${id}">Loading...</span>
+                                </div>
+                            </td>
+                            <td class="id-cell">${id}</td>
+                            <td>
+                                <button class="action-btn" onclick="removeItem('${id}')">Remove</button>
+                            </td>
+                        </tr>
+                 ;
+         }
+
+                html += '</tbody></table>';
+                container.innerHTML = html;
+
+                // Fetch metadata for each item
+                for (const id of items) {
+                    getArtistMeta(id).then(meta => {
+                        const nameEl = document.getElementById(`name-${id}`);
+                        const avatarEl = document.getElementById(`avatar-${id}`);
+                        
+                        if (nameEl) nameEl.textContent = meta.name;
+                        if (avatarEl && meta.avatar) {
+                            avatarEl.style.backgroundImage = `url('${meta.avatar}')`;
+                            avatarEl.style.backgroundSize = 'cover';
+                            avatarEl.style.backgroundColor = 'transparent';
+                        }
+                    });
+                }
+
+            } catch (e) {
+                container.innerHTML = `<div class="empty-state" style="color: var(--danger-color)">Error loading queue: ${e}</div>`;
+            }
+        }
+
+        // Initial load
+        fetchQueue();
+    </script>
+</body>
+
+</html>
