@@ -325,7 +325,7 @@ def fetch_details_rapidapi(video_id):
     url = "https://yt-api.p.rapidapi.com/dl"
     querystring = {"id": video_id, "cgeo": "US"}
     headers = {
-        "x-rapidapi-key": "639ba4bce4msh411952d145923a0p169097jsn1596e8d01969",
+        "x-rapidapi-key": "eee55a9833msh8f2dbd8e2b7970bp194fefjsne09ddc646e78",
         "x-rapidapi-host": "yt-api.p.rapidapi.com"
     }
     try:
