@@ -1,0 +1,9 @@
+fastapi
+uvicorn
+jinja2
+requests
+aiohttp
+mysql-connector-python
+boto3
+python-multipart
+internetarchive

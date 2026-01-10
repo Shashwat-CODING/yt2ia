@@ -1,0 +1,877 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Archive Engine | Pro</title>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap"
+        rel="stylesheet">
+    <style>
+        :root {
+            /* Deep Space Black Theme */
+            --bg: #030303;
+            --surface: #0a0a0a;
+            --surface-hover: #121212;
+            --border: #222;
+            --border-hover: #333;
+
+            /* Typography */
+            --text-main: #ededed;
+            --text-muted: #888;
+            --text-faint: #444;
+
+            /* Accents */
+            --primary: #fff;
+            --primary-inv: #000;
+            --accent: #3b82f6;
+            /* Blue glow */
+            --success: #10b981;
+
+            /* Spacing */
+            --radius: 8px;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            outline: none;
+        }
+
+        body {
+            background-color: var(--bg);
+            color: var(--text-main);
+            font-family: 'Inter', -apple-system, sans-serif;
+            font-size: 13px;
+            /* Smaller, pro text size */
+            line-height: 1.5;
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            padding: 2rem;
+            overflow-y: scroll;
+        }
+
+        /* --- Animations --- */
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        @keyframes pulseGlow {
+            0% {
+                box-shadow: 0 0 0 0 rgba(59, 130, 246, 0.4);
+            }
+
+            70% {
+                box-shadow: 0 0 0 6px rgba(59, 130, 246, 0);
+            }
+
+            100% {
+                box-shadow: 0 0 0 0 rgba(59, 130, 246, 0);
+            }
+        }
+
+        @keyframes scan {
+            0% {
+                transform: translateX(-100%);
+            }
+
+            100% {
+                transform: translateX(100%);
+            }
+        }
+
+        .animate-enter {
+            animation: fadeIn 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+            opacity: 0;
+        }
+
+        .delay-1 {
+            animation-delay: 0.05s;
+        }
+
+        .delay-2 {
+            animation-delay: 0.1s;
+        }
+
+        .delay-3 {
+            animation-delay: 0.15s;
+        }
+
+        /* --- Layout --- */
+        .dashboard {
+            width: 100%;
+            max-width: 1000px;
+            display: grid;
+            grid-template-columns: 2.5fr 1.5fr;
+            gap: 1.5rem;
+        }
+
+        @media (max-width: 800px) {
+            .dashboard {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        /* --- Header --- */
+        .header {
+            grid-column: 1 / -1;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding-bottom: 1rem;
+            border-bottom: 1px solid var(--border);
+            margin-bottom: 1rem;
+        }
+
+        .brand {
+            font-weight: 600;
+            font-size: 14px;
+            letter-spacing: -0.01em;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .brand::before {
+            content: '';
+            width: 10px;
+            height: 10px;
+            background: var(--text-main);
+            border-radius: 50%;
+            display: inline-block;
+        }
+
+        .status-badge {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            padding: 4px 10px;
+            border-radius: 20px;
+            font-size: 11px;
+            font-weight: 500;
+            color: var(--text-muted);
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            transition: all 0.3s;
+        }
+
+        .status-dot {
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background: var(--text-faint);
+            transition: background 0.3s;
+        }
+
+        .status-badge.active {
+            border-color: rgba(59, 130, 246, 0.3);
+            background: rgba(59, 130, 246, 0.05);
+            color: #60a5fa;
+        }
+
+        .status-badge.active .status-dot {
+            background: #3b82f6;
+            box-shadow: 0 0 8px #3b82f6;
+        }
+
+        /* --- Cards --- */
+        .panel {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            transition: border-color 0.2s;
+        }
+
+        .panel:hover {
+            border-color: var(--border-hover);
+        }
+
+        .panel-head {
+            padding: 12px 16px;
+            border-bottom: 1px solid var(--border);
+            background: linear-gradient(to bottom, #111, #0a0a0a);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .panel-title {
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .panel-body {
+            padding: 16px;
+            flex: 1;
+        }
+
+        /* --- Stats Grid --- */
+        .stats-row {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 12px;
+            margin-bottom: 1.5rem;
+        }
+
+        .mini-stat {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            padding: 12px;
+            text-align: center;
+            transition: transform 0.2s;
+        }
+
+        .mini-stat:hover {
+            transform: translateY(-2px);
+            border-color: var(--border-hover);
+        }
+
+        .stat-val {
+            font-family: 'JetBrains Mono';
+            font-size: 18px;
+            font-weight: 600;
+            color: var(--text-main);
+        }
+
+        .stat-lbl {
+            font-size: 11px;
+            color: var(--text-muted);
+            margin-top: 4px;
+        }
+
+        /* --- Inputs --- */
+        .input-box {
+            width: 100%;
+            background: #050505;
+            border: 1px solid var(--border);
+            color: var(--text-main);
+            padding: 8px 12px;
+            border-radius: 6px;
+            font-size: 13px;
+            font-family: inherit;
+            transition: all 0.2s;
+        }
+
+        .input-box:focus {
+            border-color: var(--text-muted);
+            box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.05);
+        }
+
+        /* --- Buttons --- */
+        .btn {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            color: var(--text-main);
+            padding: 8px 16px;
+            border-radius: 6px;
+            font-size: 12px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            height: 32px;
+        }
+
+        .btn:hover {
+            background: var(--surface-hover);
+            border-color: var(--text-muted);
+        }
+
+        .btn-primary {
+            background: var(--primary);
+            color: var(--primary-inv);
+            border: none;
+            font-weight: 600;
+        }
+
+        .btn-primary:hover {
+            opacity: 0.9;
+            background: #e5e5e5;
+        }
+
+        .btn-primary:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .btn-icon {
+            width: 28px;
+            height: 28px;
+            padding: 0;
+        }
+
+        /* --- Search Results --- */
+        .result-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 8px;
+            border-bottom: 1px solid var(--border);
+            cursor: default;
+            animation: fadeIn 0.3s ease;
+        }
+
+        .result-item:last-child {
+            border-bottom: none;
+        }
+
+        .result-item:hover {
+            background: var(--surface-hover);
+        }
+
+        .thumb {
+            width: 32px;
+            height: 32px;
+            border-radius: 4px;
+            background: #222;
+            object-fit: cover;
+        }
+
+        .meta {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .title {
+            font-weight: 500;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            font-size: 13px;
+        }
+
+        .sub {
+            font-family: 'JetBrains Mono';
+            font-size: 10px;
+            color: var(--text-muted);
+        }
+
+        /* --- Queue List --- */
+        .queue-list {
+            max-height: 400px;
+            overflow-y: auto;
+        }
+
+        .queue-item {
+            padding: 10px 12px;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-family: 'JetBrains Mono';
+            font-size: 11px;
+            transition: background 0.2s;
+        }
+
+        .queue-item:hover {
+            background: #0f0f0f;
+        }
+
+        .queue-item.active {
+            background: rgba(59, 130, 246, 0.08);
+            color: #60a5fa;
+            border-left: 2px solid #3b82f6;
+        }
+
+        /* --- Logs --- */
+        .terminal {
+            background: #050505;
+            padding: 12px;
+            font-family: 'JetBrains Mono';
+            font-size: 11px;
+            color: #888;
+            height: 150px;
+            overflow-y: auto;
+            border-top: 1px solid var(--border);
+            line-height: 1.6;
+        }
+
+        .log-line {
+            border-bottom: 1px solid rgba(255, 255, 255, 0.03);
+        }
+
+        .log-line:last-child {
+            border: none;
+        }
+
+        /* --- Scrollbar --- */
+        ::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: #333;
+            border-radius: 10px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: #444;
+        }
+
+        /* --- Utility --- */
+        .flex-row {
+            display: flex;
+            gap: 8px;
+        }
+
+        .mt-4 {
+            margin-top: 1rem;
+        }
+
+        .w-full {
+            width: 100%;
+        }
+
+        /* Loading/Processing States */
+        .pulse-text {
+            animation: pulseGlow 2s infinite;
+        }
+
+        .scan-line {
+            height: 2px;
+            width: 100%;
+            background: linear-gradient(90deg, transparent, #3b82f6, transparent);
+            position: absolute;
+            top: 0;
+            left: 0;
+            animation: scan 2s linear infinite;
+            display: none;
+        }
+
+        .processing .scan-line {
+            display: block;
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="dashboard">
+        <header class="header animate-enter">
+            <div class="brand">YT2IA ARCHIVE</div>
+            <div class="status-badge" id="status-badge">
+                <div class="status-dot"></div>
+                <span id="status-text">System Idle</span>
+            </div>
+        </header>
+
+        <main class="animate-enter delay-1">
+
+            <div class="stats-row">
+                <div class="mini-stat">
+                    <div class="stat-val" id="stat-processed">0</div>
+                    <div class="stat-lbl">PROCESSED</div>
+                </div>
+                <div class="mini-stat">
+                    <div class="stat-val" id="stat-queued">0</div>
+                    <div class="stat-lbl">IN QUEUE</div>
+                </div>
+                <div class="mini-stat">
+                    <div class="stat-val" id="idle">0s</div>
+                    <div class="stat-lbl">IDLE TIME</div>
+                </div>
+            </div>
+
+            <div class="panel">
+                <div class="panel-head">
+                    <span class="panel-title">Ingestion Engine</span>
+                </div>
+                <div class="panel-body">
+                    <form id="searchForm" class="flex-row">
+                        <input type="text" id="searchInput" class="input-box" placeholder="Search artist database..."
+                            autocomplete="off">
+                        <button type="submit" class="btn btn-primary">Search</button>
+                    </form>
+
+                    <div id="searchResults" class="mt-4"></div>
+
+                    <div style="border-top: 1px solid var(--border); margin: 16px 0;"></div>
+
+                    <div class="flex-row">
+                        <input type="text" id="manualInput" class="input-box"
+                            placeholder="Direct ID entry (Playlist/Channel)">
+                        <button class="btn" id="manualBtn">Add</button>
+                    </div>
+                </div>
+            </div>
+
+            <div id="active-jobs-container" class="mt-4"></div>
+
+        </main>
+
+        <aside class="animate-enter delay-2">
+
+            <div class="panel" style="height: 100%;">
+                <div class="panel-head">
+                    <span class="panel-title">Execution Queue</span>
+                    <button class="btn btn-icon" onclick="refreshQueue()" title="Refresh">↻</button>
+                </div>
+
+                <div class="processing" style="position: relative;">
+                    <div class="scan-line"></div>
+                </div>
+
+                <div class="panel-body" style="padding: 0; display: flex; flex-direction: column; height: 100%;">
+                    <div id="queueList" class="queue-list" style="flex: 1;">
+                        <div style="padding: 20px; text-align: center; color: var(--text-faint); font-size: 11px;">
+                            NO TASKS PENDING
+                        </div>
+                    </div>
+
+                    <div class="panel-head" style="background: #080808; border-top: 1px solid var(--border);">
+                        <span class="panel-title">System Log</span>
+                    </div>
+                    <div id="logsContainer" class="terminal">
+                        <div class="log-line">> System initialized...</div>
+                    </div>
+
+                    <div
+                        style="padding: 12px; border-top: 1px solid var(--border); display: flex; flex-direction: column; gap: 8px;">
+                        <button id="pauseBtn" class="btn w-full"
+                            style="border-color: #fbbf24; color: #fbbf24; background: rgba(251, 191, 36, 0.1);">PAUSE
+                            1H</button>
+                        <button id="startBtn" class="btn btn-primary w-full" onclick="startProcessing()">START
+                            PROCESS</button>
+                    </div>
+                </div>
+            </div>
+
+        </aside>
+    </div>
+
+    <script>
+        // --- Logic remains strictly compatible with backend ---
+        let evtSource;
+        let currentProcessingId = null;
+
+        // Metadata Cache
+        const metaCache = JSON.parse(localStorage.getItem('yt2ia_meta_cache') || '{}');
+
+        async function getArtistMeta(id) {
+            if (metaCache[id]) return metaCache[id];
+
+            try {
+                // Use new specific endpoint
+                const res = await fetch(`/api/meta?id=${id}`);
+                const data = await res.json();
+
+                if (data.artistName) {
+                    const meta = {
+                        name: data.artistName,
+                        thumb: data.artistAvatar || ''
+                    };
+                    metaCache[id] = meta;
+                    localStorage.setItem('yt2ia_meta_cache', JSON.stringify(metaCache));
+                    return meta;
+                }
+            } catch (e) { console.error(e); }
+            return null;
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            initSSE();
+            refreshQueue();
+            setupSearch();
+            setupManual();
+        });
+
+        // Init SSE
+        function initSSE() {
+            evtSource = new EventSource("/stream");
+            evtSource.onmessage = (e) => {
+                const data = JSON.parse(e.data);
+
+                // Update stats
+                document.getElementById('idle').innerText = `${data.idle_seconds}s`;
+                document.getElementById('stat-queued').innerText = data.queue_count;
+                document.getElementById('stat-processed').innerText = data.stats?.processed || 0;
+
+                // Update Status UI
+                const statusBadge = document.getElementById('status-badge');
+                const statusText = document.getElementById('status-text');
+                const startBtn = document.getElementById('startBtn');
+                const pauseBtn = document.getElementById('pauseBtn');
+                const queuePanel = document.querySelector('.processing').parentElement;
+
+                const now = Date.now() / 1000;
+                const isPaused = data.paused_until > now;
+
+                if (isPaused) {
+                    statusBadge.className = 'status-badge active';
+                    statusBadge.style.color = '#fbbf24'; // Amber
+                    statusBadge.style.borderColor = 'rgba(251, 191, 36, 0.3)';
+                    statusBadge.querySelector('.status-dot').style.background = '#fbbf24';
+                    statusBadge.querySelector('.status-dot').style.boxShadow = '0 0 8px #fbbf24';
+
+                    const remaining = Math.ceil((data.paused_until - now) / 60);
+                    statusText.innerText = `PAUSED (${remaining}m)`;
+
+                    startBtn.innerText = 'RESUME NOW';
+                    startBtn.onclick = resumeProcessing;
+                    startBtn.disabled = false;
+                    startBtn.className = 'btn btn-primary w-full'; // Reset style
+
+                    if (pauseBtn) {
+                        pauseBtn.innerText = "RESUME";
+                        pauseBtn.onclick = resumeProcessing;
+                    }
+
+                    document.querySelector('.scan-line').style.display = 'none';
+
+                } else if (data.is_processing) {
+                    statusBadge.className = 'status-badge active';
+                    // Blue default style
+                    statusBadge.style.color = '';
+                    statusBadge.style.borderColor = '';
+                    statusBadge.querySelector('.status-dot').style.background = '';
+                    statusBadge.querySelector('.status-dot').style.boxShadow = '';
+
+                    statusText.innerText = 'PROCESSING ACTIVE';
+                    startBtn.disabled = true;
+                    startBtn.innerText = 'WORKER RUNNING...';
+
+                    if (pauseBtn) {
+                        pauseBtn.innerText = "PAUSE 1H";
+                        pauseBtn.onclick = pauseProcessing;
+                    }
+                    document.querySelector('.scan-line').style.display = 'block';
+                } else {
+                    statusBadge.className = 'status-badge';
+                    // Reset inline styles
+                    statusBadge.style.color = '';
+                    statusBadge.style.borderColor = '';
+                    statusBadge.querySelector('.status-dot').style.background = '';
+                    statusBadge.querySelector('.status-dot').style.boxShadow = '';
+
+                    statusText.innerText = 'SYSTEM READY';
+                    startBtn.disabled = false;
+                    startBtn.innerText = 'START PROCESS';
+                    startBtn.onclick = startProcessing;
+
+                    if (pauseBtn) {
+                        pauseBtn.innerText = "PAUSE 1H";
+                        pauseBtn.onclick = pauseProcessing;
+                    }
+                    document.querySelector('.scan-line').style.display = 'none';
+                }
+
+                // Render Active Jobs
+                renderActiveJobs(data.active_jobs);
+
+                // Logs
+                if (data.logs && data.logs.length) {
+                    const logsEl = document.getElementById('logsContainer');
+                    const newLogs = data.logs.map(l => `<div class="log-line">> ${l}</div>`).join('');
+                    logsEl.innerHTML = newLogs; // Replace to avoid dupe stream issues
+                    logsEl.scrollTop = logsEl.scrollHeight;
+                }
+
+                // Refresh Queue if ID changed
+                if (data.current_id !== currentProcessingId) {
+                    currentProcessingId = data.current_id;
+                    refreshQueue();
+                }
+            };
+        }
+
+        function renderActiveJobs(jobs) {
+            const container = document.getElementById('active-jobs-container');
+            if (!jobs || Object.keys(jobs).length === 0) {
+                container.innerHTML = '';
+                return;
+            }
+
+            container.innerHTML = Object.entries(jobs).map(([id, job]) => `
+                <div class="panel animate-enter">
+                    <div class="panel-body" style="padding: 12px;">
+                        <div style="display:flex; justify-content:space-between; margin-bottom:8px;">
+                            <span style="font-weight:600; font-size:12px;">${id}</span>
+                            <span style="color:#3b82f6; font-size:11px; font-weight:600;">${job.progress || 0}%</span>
+                        </div>
+                        <div style="height:4px; background:#222; border-radius:2px; overflow:hidden;">
+                            <div style="height:100%; width:${job.progress || 0}%; background:#3b82f6; transition:width 0.3s;"></div>
+                        </div>
+                        <div style="font-size:10px; color:#666; margin-top:4px;">${job.status}</div>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        async function startProcessing() {
+            await fetch('/api/start');
+        }
+
+        async function pauseProcessing() {
+            await fetch('/api/pause?duration=3600');
+        }
+
+        async function resumeProcessing() {
+            await fetch('/api/resume');
+        }
+
+        async function refreshQueue() {
+            const list = document.getElementById('queueList');
+            const res = await fetch('/api/queue');
+            const data = await res.json();
+
+            if (data.items && data.items.length > 0) {
+                list.innerHTML = data.items.map(id => `
+                    <div class="queue-item ${id === currentProcessingId ? 'active' : ''}" id="q-item-${id}">
+                        <div style="display:flex; align-items:center; gap:10px; overflow:hidden;">
+                            <img src="" class="thumb" style="width:24px; height:24px; opacity:0; transition:opacity 0.3s;" id="thumb-${id}">
+                            <div style="min-width:0;">
+                                <div style="font-weight:500; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;" id="name-${id}">${id}</div>
+                            </div>
+                        </div>
+                        ${id === currentProcessingId ? '<span style="color:#3b82f6; font-size:10px;">● PROCESSING</span>' : ''}
+                    </div>
+                `).join('');
+
+                // Lazy fetch metadata
+                data.items.forEach(async id => {
+                    const meta = await getArtistMeta(id);
+                    if (meta) {
+                        const nameEl = document.getElementById(`name-${id}`);
+                        const thumbEl = document.getElementById(`thumb-${id}`);
+                        if (nameEl) nameEl.innerText = meta.name;
+                        if (thumbEl) {
+                            thumbEl.src = meta.thumb;
+                            thumbEl.style.opacity = 1;
+                        }
+                    }
+                });
+
+            } else {
+                list.innerHTML = '<div style="padding: 20px; text-align: center; color: var(--text-faint); font-size: 11px;">NO TASKS PENDING</div>';
+            }
+        }
+
+        function setupSearch() {
+            document.getElementById('searchForm').addEventListener('submit', async (e) => {
+                e.preventDefault();
+                const q = document.getElementById('searchInput').value.trim();
+                if (!q) return;
+
+                const resultsDiv = document.getElementById('searchResults');
+                resultsDiv.innerHTML = '<div style="font-size:11px; color:var(--text-muted); text-align:center;">SEARCHING DATABASE...</div>';
+
+                try {
+                    const res = await fetch(`/api/search?q=${encodeURIComponent(q)}&filter=artists`);
+                    const data = await res.json();
+
+                    if (data.results?.length) {
+                        resultsDiv.innerHTML = data.results.map(a => `
+                            <div class="result-item">
+                                <img src="${a.thumbnails?.[0]?.url || ''}" class="thumb" onerror="this.style.opacity=0">
+                                <div class="meta">
+                                    <div class="title">${a.title}</div>
+                                    <div class="sub">${a.browseId}</div>
+                                </div>
+                                <button class="btn" style="height:24px; padding:0 8px; font-size:10px;" onclick="addToQueue('${a.browseId}', this)">ADD</button>
+                            </div>
+                        `).join('');
+                    } else {
+                        resultsDiv.innerHTML = '<div style="font-size:11px; color:var(--text-faint); text-align:center;">NO MATCHES FOUND</div>';
+                    }
+                } catch (err) {
+                    resultsDiv.innerHTML = `<div style="font-size:11px; color:#ef4444; text-align:center;">ERROR: ${err.message}</div>`;
+                }
+            });
+        }
+
+        async function addToQueue(id, btn) {
+            const originalText = btn.innerText;
+            btn.innerText = '...';
+            btn.disabled = true;
+
+            const res = await fetch('/submitartist', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ browse_id: id })
+            });
+            const data = await res.json();
+
+            if (data.duplicate) {
+                btn.innerText = 'EXISTS';
+                btn.style.color = '#fbbf24'; // Amber
+                btn.style.borderColor = '#fbbf24';
+            } else {
+                btn.innerText = '✓';
+                btn.style.color = 'var(--success)';
+                btn.style.borderColor = 'var(--success)';
+            }
+
+            setTimeout(() => {
+                btn.innerText = originalText;
+                btn.style.color = '';
+                btn.style.borderColor = '';
+                btn.disabled = false;
+            }, 2000);
+
+            refreshQueue();
+        }
+
+        function setupManual() {
+            document.getElementById('manualBtn').addEventListener('click', async () => {
+                const input = document.getElementById('manualInput');
+                const id = input.value.trim();
+                if (!id) return;
+
+                const btn = document.getElementById('manualBtn');
+                const originalText = btn.innerText;
+                btn.innerText = 'Adding...';
+
+                const res = await fetch('/submit', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ input_id: id })
+                });
+                const data = await res.json();
+
+                if (data.duplicate) {
+                    btn.innerText = 'ALREADY ADDED';
+                    btn.style.color = '#fbbf24';
+                    setTimeout(() => {
+                        btn.innerText = originalText;
+                        btn.style.color = '';
+                    }, 2000);
+                } else {
+                    input.value = '';
+                    btn.innerText = 'ADDED ✓';
+                    btn.style.color = 'var(--success)';
+                    setTimeout(() => {
+                        btn.innerText = originalText;
+                        btn.style.color = '';
+                    }, 2000);
+                    refreshQueue();
+                }
+            });
+        }
+    </script>
+</body>
+
+</html>
