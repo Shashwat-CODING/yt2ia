@@ -167,7 +167,7 @@
                 const res = await fetch(`/api/meta?id=${id}`);
                 const data = await res.json();
                 if (data && data.name) {
-                     const meta = {
+                    const meta = {
                         name: data.name,
                         avatar: (data.thumbnails && data.thumbnails.length > 0) ? data.thumbnails[0].url : null
                     };
@@ -176,17 +176,18 @@
                     return meta;
                 }
             } catch (e) {
-                 console.error("Meta fetch error", e);
-              return { name: 'Unknown Artist', avatar: null };
+                console.error("Meta fetch error", e);
+            }
+            return { name: 'Unknown Artist', avatar: null };
         }
 
         async function removeItem(id) {
             if (!confirm(`Are you sure you want to remove ${id}?`)) return;
-            
+
             try {
                 const res = await fetch(`/api/queue/remove/${id}`, { method: 'POST' });
                 const data = await res.json();
-   (data.error) {
+                if (data.error) {
                     alert('Error: ' + data.error);
                 } else {
                     fetchQueue(); // Refresh
@@ -227,7 +228,8 @@
                     html += `
                         <tr id="row-${id}">
                             <td>
-                                <div class="artist-i                      <div class="artist-avatar" id="avatar-${id}" style="background-color: #334155;"></div>
+                                <div class="artist-info">
+                                    <div class="artist-avatar" id="avatar-${id}" style="background-color: #334155;"></div>
                                     <span class="artist-name" id="name-${id}">Loading...</span>
                                 </div>
                             </td>
@@ -236,8 +238,8 @@
                                 <button class="action-btn" onclick="removeItem('${id}')">Remove</button>
                             </td>
                         </tr>
-                 ;
-         }
+                    `;
+                }
 
                 html += '</tbody></table>';
                 container.innerHTML = html;
@@ -247,7 +249,7 @@
                     getArtistMeta(id).then(meta => {
                         const nameEl = document.getElementById(`name-${id}`);
                         const avatarEl = document.getElementById(`avatar-${id}`);
-                        
+
                         if (nameEl) nameEl.textContent = meta.name;
                         if (avatarEl && meta.avatar) {
                             avatarEl.style.backgroundImage = `url('${meta.avatar}')`;
