@@ -66,7 +66,7 @@ def remove_status(video_id):
 INVIDIOUS_INSTANCES = [
   "https://compilations.broquemonsieur.net",
   "https://invidious.frontendfriendly.xyz",
- "https://invidious.privacyfucking.rocks",
+  "https://invidious.privacyfucking.rocks",
   "https://invidious.privacyredirect.com",
   "https://invidious.darkness.services",
   "https://invidious.technicalvoid.dev",
@@ -418,7 +418,7 @@ async def process_video_async(video_id, metadata_override=None):
         source_used = "JioSaavn"
         logger.info(f"[{video_id}] Source: JioSaavn")
     
-    # Priority 2: Invidious (with proxy)
+    # Priority 2: Invidious (get raw URL, not proxied)
     if not final_stream_url:
         set_status(video_id, "Checking Invidious...")
         if not data:
@@ -432,13 +432,10 @@ async def process_video_async(video_id, metadata_override=None):
                 best_audio = audio_formats[0]
                 raw_url = best_audio.get('url')
                 
-                # Proxy the URL through the Invidious instance
-                if raw_url and instance:
-                    # Use the /latest_version endpoint to get proxied URL
-                    proxy_url = f"{instance}/latest_version?id={video_id}&itag={best_audio.get('itag', '')}&local=true"
-                    final_stream_url = proxy_url
-                    source_used = "Invidious (Proxied)"
-                    logger.info(f"[{video_id}] Source: Invidious (Proxied via {instance})")
+                if raw_url:
+                    final_stream_url = raw_url
+                    source_used = "Invidious"
+                    logger.info(f"[{video_id}] Source: Invidious (Direct)")
 
     # Priority 3: Piped
     if not final_stream_url:
@@ -496,8 +493,26 @@ async def process_video_async(video_id, metadata_override=None):
     set_status(video_id, f"Downloading...")
     
     try:
-        # Download audio
-        response = requests.get(final_stream_url, stream=True, timeout=180)
+        # Prepare headers similar to the attached file example
+        headers = {
+            "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36",
+            "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+            "Accept-Language": "en-GB,en-US;q=0.9,en;q=0.8",
+            "Accept-Encoding": "gzip, deflate, br",
+            "Upgrade-Insecure-Requests": "1",
+            "Sec-Fetch-Dest": "document",
+            "Sec-Fetch-Mode": "navigate",
+            "Sec-Fetch-Site": "none",
+            "Sec-Fetch-User": "?1",
+        }
+        
+        # Add referer for certain domains
+        if "echostreamz.com" in final_stream_url or "googlevideo.com" in final_stream_url:
+            headers["Referer"] = "https://www.youtube.com/"
+        
+        # Download audio with proper headers and streaming
+        logger.info(f"[{video_id}] Starting download from {source_used}")
+        response = requests.get(final_stream_url, headers=headers, stream=True, timeout=60)
         
         # Handle 403 with RapidAPI fallback
         if response.status_code == 403:
@@ -509,77 +524,85 @@ async def process_video_async(video_id, metadata_override=None):
                 if r_audio:
                     r_audio.sort(key=lambda x: int(x.get('bitrate', 0)), reverse=True)
                     final_stream_url = r_audio[0].get('url')
-                    response = requests.get(final_stream_url, stream=True, timeout=180)
+                    response = requests.get(final_stream_url, headers=headers, stream=True, timeout=60)
+        
+        if response.status_code != 200:
+            logger.error(f"[{video_id}] HTTP {response.status_code}: {response.text[:500]}")
+            set_status(video_id, f"ERROR: HTTP {response.status_code}")
+            remove_status(video_id)
+            return
         
         response.raise_for_status()
         
         total_size = int(response.headers.get('content-length', 0))
         downloaded = 0
         
+        # Download with 1MB chunks like in the attached file
         with open(filepath, 'wb') as f:
-            for chunk in response.iter_content(chunk_size=8192):
+            for chunk in response.iter_content(chunk_size=1024 * 1024):  # 1MB chunks
                 if chunk:
                     f.write(chunk)
                     downloaded += len(chunk)
                     if total_size > 0:
                         percent = int((downloaded / total_size) * 100)
                         set_status(video_id, f"Downloading: {percent}%", progress=percent, state="downloading")
-            
-            logger.info(f"[{video_id}] Download complete")
-            set_status(video_id, "Uploading to Archive.org...", progress=100, state="processing")
-            
-            identifier = "YTMBACKUP"
-            md = {
-                'title': title,
-                'creator': author,
-                'mediatype': 'audio',
-                'collection': 'opensource_audio'
-            }
-            
-            logger.info(f"[{video_id}] Uploading to IA: {identifier}")
-            
-            # Retry logic for upload (handle connection refused/busy)
-            max_retries = 10
-            base_delay = 5  # Start with 5s delay
-            
-            for attempt in range(max_retries):
-                try:
-                    r_ia = upload(
-                        identifier, 
-                        files={filename: filepath},  # key is remote name, value is local path
-                        metadata=md, 
-                        access_key=IA_ACCESS_KEY,
-                        secret_key=IA_SECRET_KEY,
-                        verbose=True
-                    )
-                    
-                    if r_ia and len(r_ia) > 0 and r_ia[0].status_code == 200:
-                        logger.info(f"[{video_id}] Upload success")
-                        ia_download_url = f"https://archive.org/download/{identifier}/{filename}"
-                        # Save with song name format: "title - artist1, artist2"
-                        song_name = f"{title} - {author}"
-                        save_entry(song_name, ia_download_url)
-                        STATUS["stats"]["processed"] += 1
-                        remove_status(video_id)
-                        break
-                    else:
-                        raise Exception(f"Upload returned status {r_ia[0].status_code if r_ia else 'unknown'}")
-                        
-                except Exception as e:
-                    if attempt < max_retries - 1:
-                        wait = base_delay * (attempt + 1) + (time.time() % 5) # Add jitter
-                        logger.warning(f"[{video_id}] Upload attempt {attempt+1} failed ({str(e)}). Retrying in {wait:.1f}s...")
-                        set_status(video_id, f"Upload retry {attempt+1}/{max_retries}...", state="processing")
-                        time.sleep(wait)
-                    else:
-                        set_status(video_id, "ERROR: Upload failed after retries")
-                        logger.error(f"[{video_id}] Upload failed: {e}")
-                        remove_status(video_id)
-                        # Don't save to DB on failure
-                # Don't save to DB on failure
+        
+        logger.info(f"[{video_id}] Download complete ✅")
+        set_status(video_id, "Uploading to Archive.org...", progress=100, state="processing")
+        
+        identifier = "YTMBACKUP"
+        md = {
+            'title': title,
+            'creator': author,
+            'mediatype': 'audio',
+            'collection': 'opensource_audio'
+        }
+        
+        logger.info(f"[{video_id}] Uploading to IA: {identifier}")
+        
+        # Retry logic for upload (handle connection refused/busy)
+        max_retries = 10
+        base_delay = 5  # Start with 5s delay
+        
+        for attempt in range(max_retries):
+            try:
+                r_ia = upload(
+                    identifier, 
+                    files={filename: filepath},  # key is remote name, value is local path
+                    metadata=md, 
+                    access_key=IA_ACCESS_KEY,
+                    secret_key=IA_SECRET_KEY,
+                    verbose=True
+                )
                 
-            if os.path.exists(filepath):
-                os.remove(filepath)
+                if r_ia and len(r_ia) > 0 and r_ia[0].status_code == 200:
+                    logger.info(f"[{video_id}] Upload success")
+                    ia_download_url = f"https://archive.org/download/{identifier}/{filename}"
+                    # Save with song name format: "title - artist1, artist2"
+                    song_name = f"{title} - {author}"
+                    save_entry(song_name, ia_download_url)
+                    STATUS["stats"]["processed"] += 1
+                    remove_status(video_id)
+                    break
+                else:
+                    raise Exception(f"Upload returned status {r_ia[0].status_code if r_ia else 'unknown'}")
+                    
+            except Exception as e:
+                if attempt < max_retries - 1:
+                    wait = base_delay * (attempt + 1) + (time.time() % 5)  # Add jitter
+                    logger.warning(f"[{video_id}] Upload attempt {attempt+1} failed ({str(e)}). Retrying in {wait:.1f}s...")
+                    set_status(video_id, f"Upload retry {attempt+1}/{max_retries}...", state="processing")
+                    time.sleep(wait)
+                else:
+                    set_status(video_id, "ERROR: Upload failed after retries")
+                    logger.error(f"[{video_id}] Upload failed: {e}")
+                    remove_status(video_id)
+        
+        # Cleanup downloaded file
+        if os.path.exists(filepath):
+            os.remove(filepath)
+            logger.info(f"[{video_id}] Cleaned up temporary file")
+            
     except Exception as e:
         set_status(video_id, f"ERROR: {str(e)}")
         logger.error(f"[{video_id}] Processing error: {e}", exc_info=True)
