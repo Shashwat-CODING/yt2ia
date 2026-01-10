@@ -221,7 +221,7 @@ YTIFY_API_BASE = "https://ytify-backend.vercel.app/api"
 async def fetch_from_instance(session, video_id, instance_url):
     try:
         url = f"{instance_url}/api/v1/videos/{video_id}"
-        async with session.get(url, timeout=100) as response:
+        async with session.get(url, timeout=10) as response:
             if response.status == 200:
                 data = await response.json()
                 return instance_url, data
@@ -249,7 +249,7 @@ async def fetch_details_parallel(video_id):
 async def fetch_from_piped(session, video_id, instance_url):
     try:
         url = f"{instance_url}/streams/{video_id}"
-        async with session.get(url, timeout=100) as resp:
+        async with session.get(url, timeout=10) as resp:
             if resp.status == 200:
                 data = await resp.json()
                 if data.get('audioStreams') or data.get('videoStreams'):
