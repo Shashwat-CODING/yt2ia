@@ -4,33 +4,23 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Archive Engine | Pro</title>
+    <title>Archive Engine | Dashboard</title>
     <link
-        href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap"
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap"
         rel="stylesheet">
     <style>
         :root {
-            /* Deep Space Black Theme */
-            --bg: #030303;
-            --surface: #0a0a0a;
-            --surface-hover: #121212;
-            --border: #222;
-            --border-hover: #333;
-
-            /* Typography */
-            --text-main: #ededed;
-            --text-muted: #888;
-            --text-faint: #444;
-
-            /* Accents */
-            --primary: #fff;
-            --primary-inv: #000;
+            --bg: #0f172a;
+            --surface: #1e293b;
+            --surface-hover: #334155;
+            --border: #334155;
+            --text-main: #f8fafc;
+            --text-muted: #94a3b8;
             --accent: #3b82f6;
-            /* Blue glow */
             --success: #10b981;
-
-            /* Spacing */
-            --radius: 8px;
+            --warning: #fbbf24;
+            --danger: #ef4444;
+            --radius: 12px;
         }
 
         * {
@@ -43,22 +33,237 @@
         body {
             background-color: var(--bg);
             color: var(--text-main);
-            font-family: 'Inter', -apple-system, sans-serif;
-            font-size: 13px;
-            /* Smaller, pro text size */
-            line-height: 1.5;
+            font-family: 'Inter', sans-serif;
             min-height: 100vh;
             display: flex;
             justify-content: center;
             padding: 2rem;
-            overflow-y: scroll;
+            line-height: 1.5;
         }
 
-        /* --- Animations --- */
+        .dashboard {
+            width: 100%;
+            max-width: 1100px;
+            display: grid;
+            grid-template-columns: 2fr 1.2fr;
+            gap: 2rem;
+        }
+
+        @media (max-width: 900px) {
+            .dashboard {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        /* Shared Components */
+        .card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+        }
+
+        .card-header {
+            padding: 1rem 1.5rem;
+            border-bottom: 1px solid var(--border);
+            background: rgba(0, 0, 0, 0.2);
+            font-weight: 600;
+            font-size: 0.95rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .card-body {
+            padding: 1.5rem;
+        }
+
+        .btn {
+            background: var(--surface-hover);
+            color: var(--text-main);
+            border: none;
+            padding: 0.6rem 1rem;
+            border-radius: 8px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-size: 0.9rem;
+        }
+
+        .btn:hover {
+            filter: brightness(1.1);
+            transform: translateY(-1px);
+        }
+
+        .btn-primary {
+            background: var(--accent);
+            color: white;
+        }
+
+        .input-box {
+            width: 100%;
+            background: rgba(0, 0, 0, 0.2);
+            border: 1px solid var(--border);
+            color: var(--text-main);
+            padding: 0.8rem;
+            border-radius: 8px;
+            font-size: 0.95rem;
+        }
+
+        .input-box:focus {
+            border-color: var(--accent);
+        }
+
+        /* Stats Row */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 1rem;
+            margin-bottom: 2rem;
+        }
+
+        .stat-card {
+            background: var(--surface);
+            padding: 1rem;
+            border-radius: var(--radius);
+            border: 1px solid var(--border);
+            text-align: center;
+        }
+
+        .stat-val {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: var(--accent);
+        }
+
+        .stat-label {
+            font-size: 0.8rem;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            margin-top: 0.25rem;
+        }
+
+        /* Status Badge */
+        .status-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: var(--text-muted);
+        }
+
+        .status-badge.active .status-dot {
+            background: var(--success);
+            box-shadow: 0 0 8px var(--success);
+        }
+
+        .status-badge.processing .status-dot {
+            background: var(--accent);
+            box-shadow: 0 0 8px var(--accent);
+        }
+
+        .status-badge.paused .status-dot {
+            background: var(--warning);
+            box-shadow: 0 0 8px var(--warning);
+        }
+
+        /* Activity Feed */
+        .activity-feed {
+            max-height: 300px;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+
+        .activity-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 10px;
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: 8px;
+            font-size: 0.9rem;
+            animation: fadeIn 0.3s ease;
+        }
+
+        .activity-icon {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            background: var(--surface-hover);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1rem;
+        }
+
+        /* Queue List */
+        .queue-item {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            padding: 12px;
+            border-bottom: 1px solid var(--border);
+            transition: background 0.2s;
+        }
+
+        .queue-item:hover {
+            background: rgba(255, 255, 255, 0.03);
+        }
+
+        .queue-img {
+            width: 40px;
+            height: 40px;
+            border-radius: 6px;
+            background: var(--border);
+            object-fit: cover;
+        }
+
+        .queue-info {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .queue-title {
+            font-weight: 500;
+            font-size: 0.95rem;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .queue-id {
+            font-size: 0.8rem;
+            color: var(--text-muted);
+            font-family: 'JetBrains Mono', monospace;
+        }
+
+        .queue-status {
+            font-size: 0.75rem;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+
         @keyframes fadeIn {
             from {
                 opacity: 0;
-                transform: translateY(10px);
+                transform: translateY(5px);
             }
 
             to {
@@ -67,403 +272,44 @@
             }
         }
 
-        @keyframes pulseGlow {
-            0% {
-                box-shadow: 0 0 0 0 rgba(59, 130, 246, 0.4);
-            }
-
-            70% {
-                box-shadow: 0 0 0 6px rgba(59, 130, 246, 0);
-            }
-
-            100% {
-                box-shadow: 0 0 0 0 rgba(59, 130, 246, 0);
-            }
-        }
-
-        @keyframes scan {
-            0% {
-                transform: translateX(-100%);
-            }
-
-            100% {
-                transform: translateX(100%);
-            }
-        }
-
-        .animate-enter {
-            animation: fadeIn 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
-            opacity: 0;
-        }
-
-        .delay-1 {
-            animation-delay: 0.05s;
-        }
-
-        .delay-2 {
-            animation-delay: 0.1s;
-        }
-
-        .delay-3 {
-            animation-delay: 0.15s;
-        }
-
-        /* --- Layout --- */
-        .dashboard {
-            width: 100%;
-            max-width: 1000px;
-            display: grid;
-            grid-template-columns: 2.5fr 1.5fr;
-            gap: 1.5rem;
-        }
-
-        @media (max-width: 800px) {
-            .dashboard {
-                grid-template-columns: 1fr;
-            }
-        }
-
-        /* --- Header --- */
-        .header {
-            grid-column: 1 / -1;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding-bottom: 1rem;
-            border-bottom: 1px solid var(--border);
-            margin-bottom: 1rem;
-        }
-
-        .brand {
-            font-weight: 600;
-            font-size: 14px;
-            letter-spacing: -0.01em;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        }
-
-        .brand::before {
-            content: '';
-            width: 10px;
-            height: 10px;
-            background: var(--text-main);
-            border-radius: 50%;
-            display: inline-block;
-        }
-
-        .status-badge {
-            background: var(--surface);
-            border: 1px solid var(--border);
-            padding: 4px 10px;
-            border-radius: 20px;
-            font-size: 11px;
-            font-weight: 500;
+        /* Toggle Switch */
+        .toggle-logs {
+            font-size: 0.8rem;
             color: var(--text-muted);
-            display: flex;
-            align-items: center;
-            gap: 6px;
-            transition: all 0.3s;
-        }
-
-        .status-dot {
-            width: 6px;
-            height: 6px;
-            border-radius: 50%;
-            background: var(--text-faint);
-            transition: background 0.3s;
-        }
-
-        .status-badge.active {
-            border-color: rgba(59, 130, 246, 0.3);
-            background: rgba(59, 130, 246, 0.05);
-            color: #60a5fa;
-        }
-
-        .status-badge.active .status-dot {
-            background: #3b82f6;
-            box-shadow: 0 0 8px #3b82f6;
-        }
-
-        /* --- Cards --- */
-        .panel {
-            background: var(--surface);
-            border: 1px solid var(--border);
-            border-radius: var(--radius);
-            overflow: hidden;
-            display: flex;
-            flex-direction: column;
-            transition: border-color 0.2s;
-        }
-
-        .panel:hover {
-            border-color: var(--border-hover);
-        }
-
-        .panel-head {
-            padding: 12px 16px;
-            border-bottom: 1px solid var(--border);
-            background: linear-gradient(to bottom, #111, #0a0a0a);
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-
-        .panel-title {
-            font-size: 12px;
-            font-weight: 600;
-            color: var(--text-muted);
-            text-transform: uppercase;
-            letter-spacing: 0.05em;
-        }
-
-        .panel-body {
-            padding: 16px;
-            flex: 1;
-        }
-
-        /* --- Stats Grid --- */
-        .stats-row {
-            display: grid;
-            grid-template-columns: repeat(3, 1fr);
-            gap: 12px;
-            margin-bottom: 1.5rem;
-        }
-
-        .mini-stat {
-            background: var(--surface);
-            border: 1px solid var(--border);
-            border-radius: 6px;
-            padding: 12px;
-            text-align: center;
-            transition: transform 0.2s;
-        }
-
-        .mini-stat:hover {
-            transform: translateY(-2px);
-            border-color: var(--border-hover);
-        }
-
-        .stat-val {
-            font-family: 'JetBrains Mono';
-            font-size: 18px;
-            font-weight: 600;
-            color: var(--text-main);
-        }
-
-        .stat-lbl {
-            font-size: 11px;
-            color: var(--text-muted);
-            margin-top: 4px;
-        }
-
-        /* --- Inputs --- */
-        .input-box {
-            width: 100%;
-            background: #050505;
-            border: 1px solid var(--border);
-            color: var(--text-main);
-            padding: 8px 12px;
-            border-radius: 6px;
-            font-size: 13px;
-            font-family: inherit;
-            transition: all 0.2s;
-        }
-
-        .input-box:focus {
-            border-color: var(--text-muted);
-            box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.05);
-        }
-
-        /* --- Buttons --- */
-        .btn {
-            background: var(--surface);
-            border: 1px solid var(--border);
-            color: var(--text-main);
-            padding: 8px 16px;
-            border-radius: 6px;
-            font-size: 12px;
-            font-weight: 500;
-            cursor: pointer;
-            transition: all 0.2s;
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            height: 32px;
-        }
-
-        .btn:hover {
-            background: var(--surface-hover);
-            border-color: var(--text-muted);
-        }
-
-        .btn-primary {
-            background: var(--primary);
-            color: var(--primary-inv);
+            background: none;
             border: none;
-            font-weight: 600;
+            cursor: pointer;
+            text-decoration: underline;
         }
 
-        .btn-primary:hover {
-            opacity: 0.9;
-            background: #e5e5e5;
-        }
-
-        .btn-primary:disabled {
-            opacity: 0.5;
-            cursor: not-allowed;
-        }
-
-        .btn-icon {
-            width: 28px;
-            height: 28px;
-            padding: 0;
-        }
-
-        /* --- Search Results --- */
-        .result-item {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            padding: 8px;
-            border-bottom: 1px solid var(--border);
-            cursor: default;
-            animation: fadeIn 0.3s ease;
-        }
-
-        .result-item:last-child {
-            border-bottom: none;
-        }
-
-        .result-item:hover {
-            background: var(--surface-hover);
-        }
-
-        .thumb {
-            width: 32px;
-            height: 32px;
-            border-radius: 4px;
-            background: #222;
-            object-fit: cover;
-        }
-
-        .meta {
-            flex: 1;
-            min-width: 0;
-        }
-
-        .title {
-            font-weight: 500;
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-            font-size: 13px;
-        }
-
-        .sub {
+        #rawLogs {
+            display: none;
+            margin-top: 1rem;
             font-family: 'JetBrains Mono';
-            font-size: 10px;
+            font-size: 0.8rem;
             color: var(--text-muted);
-        }
-
-        /* --- Queue List --- */
-        .queue-list {
-            max-height: 400px;
-            overflow-y: auto;
-        }
-
-        .queue-item {
-            padding: 10px 12px;
-            border-bottom: 1px solid var(--border);
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            font-family: 'JetBrains Mono';
-            font-size: 11px;
-            transition: background 0.2s;
-        }
-
-        .queue-item:hover {
-            background: #0f0f0f;
-        }
-
-        .queue-item.active {
-            background: rgba(59, 130, 246, 0.08);
-            color: #60a5fa;
-            border-left: 2px solid #3b82f6;
-        }
-
-        /* --- Logs --- */
-        .terminal {
-            background: #050505;
-            padding: 12px;
-            font-family: 'JetBrains Mono';
-            font-size: 11px;
-            color: #888;
             height: 150px;
             overflow-y: auto;
-            border-top: 1px solid var(--border);
-            line-height: 1.6;
+            background: #000;
+            padding: 1rem;
+            border-radius: 8px;
         }
 
-        .log-line {
-            border-bottom: 1px solid rgba(255, 255, 255, 0.03);
-        }
-
-        .log-line:last-child {
-            border: none;
-        }
-
-        /* --- Scrollbar --- */
-        ::-webkit-scrollbar {
-            width: 6px;
-        }
-
-        ::-webkit-scrollbar-track {
-            background: transparent;
-        }
-
-        ::-webkit-scrollbar-thumb {
-            background: #333;
-            border-radius: 10px;
-        }
-
-        ::-webkit-scrollbar-thumb:hover {
-            background: #444;
-        }
-
-        /* --- Utility --- */
-        .flex-row {
-            display: flex;
-            gap: 8px;
-        }
-
-        .mt-4 {
-            margin-top: 1rem;
-        }
-
-        .w-full {
+        /* Progress Bar */
+        .progress-container {
             width: 100%;
+            background: #000;
+            height: 6px;
+            border-radius: 3px;
+            overflow: hidden;
+            margin-top: 8px;
         }
 
-        /* Loading/Processing States */
-        .pulse-text {
-            animation: pulseGlow 2s infinite;
-        }
-
-        .scan-line {
-            height: 2px;
-            width: 100%;
-            background: linear-gradient(90deg, transparent, #3b82f6, transparent);
-            position: absolute;
-            top: 0;
-            left: 0;
-            animation: scan 2s linear infinite;
-            display: none;
-        }
-
-        .processing .scan-line {
-            display: block;
+        .progress-bar {
+            height: 100%;
+            background: var(--accent);
+            width: 0%;
+            transition: width 0.3s ease;
         }
     </style>
 </head>
@@ -471,91 +317,109 @@
 <body>
 
     <div class="dashboard">
-        <header class="header animate-enter">
-            <div class="brand">YT2IA ARCHIVE</div>
-            <div class="status-badge" id="status-badge">
-                <div class="status-dot"></div>
-                <span id="status-text">System Idle</span>
-            </div>
-        </header>
-
-        <main class="animate-enter delay-1">
-
-            <div class="stats-row">
-                <div class="mini-stat">
-                    <div class="stat-val" id="stat-processed">0</div>
-                    <div class="stat-lbl">PROCESSED</div>
-                </div>
-                <div class="mini-stat">
-                    <div class="stat-val" id="stat-queued">0</div>
-                    <div class="stat-lbl">IN QUEUE</div>
-                </div>
-                <div class="mini-stat">
-                    <div class="stat-val" id="idle">0s</div>
-                    <div class="stat-lbl">IDLE TIME</div>
+        <!-- Left Column: Controls & Feed -->
+        <main>
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 2rem;">
+                <h1 style="font-size:1.5rem; font-weight:700;">Archive Engine</h1>
+                <div id="system-status" class="status-badge">
+                    <div class="status-dot"></div>
+                    <span id="status-text">System Ready</span>
                 </div>
             </div>
 
-            <div class="panel">
-                <div class="panel-head">
-                    <span class="panel-title">Ingestion Engine</span>
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <div class="stat-val" id="processed-count">0</div>
+                    <div class="stat-label">Processed Items</div>
                 </div>
-                <div class="panel-body">
-                    <form id="searchForm" class="flex-row">
-                        <input type="text" id="searchInput" class="input-box" placeholder="Search artist database..."
+                <div class="stat-card">
+                    <div class="stat-val" id="queue-size">0</div>
+                    <div class="stat-label">In Queue</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-val" id="idle-time">0s</div>
+                    <div class="stat-label">Idle Time</div>
+                </div>
+            </div>
+
+            <div id="current-job-card" class="card" style="margin-bottom: 2rem; display: none;">
+                <div class="card-header">
+                    <span>Currently Processing</span>
+                    <span id="current-source"
+                        style="font-size:0.8rem; color:var(--text-muted); font-weight:400;">Source: Auto</span>
+                </div>
+                <div class="card-body">
+                    <div style="display:flex; justify-content:space-between; align-items:flex-end;">
+                        <div>
+                            <div id="curr-title" style="font-size:1.1rem; font-weight:600; margin-bottom:4px;">
+                                Loading...</div>
+                            <div id="curr-status" style="color:var(--accent);">Initializing...</div>
+                        </div>
+                        <div id="curr-percent" style="font-size:1.5rem; font-weight:700; color:var(--text-muted);">0%
+                        </div>
+                    </div>
+                    <div class="progress-container">
+                        <div id="progress-bar" class="progress-bar"></div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-header">
+                    <span>Add to Queue</span>
+                </div>
+                <div class="card-body">
+                    <form id="searchForm" style="display:flex; gap:10px; margin-bottom: 1rem;">
+                        <input type="text" id="searchInput" class="input-box" placeholder="Search for an artist..."
                             autocomplete="off">
                         <button type="submit" class="btn btn-primary">Search</button>
                     </form>
+                    <div id="searchResults"></div>
 
-                    <div id="searchResults" class="mt-4"></div>
+                    <div style="margin: 1.5rem 0; border-top: 1px solid var(--border);"></div>
 
-                    <div style="border-top: 1px solid var(--border); margin: 16px 0;"></div>
-
-                    <div class="flex-row">
+                    <div style="display:flex; gap:10px;">
                         <input type="text" id="manualInput" class="input-box"
-                            placeholder="Direct ID entry (Playlist/Channel)">
-                        <button class="btn" id="manualBtn">Add</button>
+                            placeholder="Enter Playlist/Video ID directly...">
+                        <button id="manualBtn" class="btn">Add ID</button>
                     </div>
                 </div>
             </div>
-
-            <div id="active-jobs-container" class="mt-4"></div>
-
         </main>
 
-        <aside class="animate-enter delay-2">
+        <!-- Right Column: Queue & Logs -->
+        <aside style="display:flex; flex-direction:column; gap: 2rem;">
 
-            <div class="panel" style="height: 100%;">
-                <div class="panel-head">
-                    <span class="panel-title">Execution Queue</span>
-                    <button class="btn btn-icon" onclick="refreshQueue()" title="Refresh">↻</button>
+            <div class="card" style="flex: 1;">
+                <div class="card-header">
+                    <span>Execution Queue</span>
+                    <button class="btn" style="padding:4px 8px; font-size:0.8rem;" onclick="refreshQueue()">↻</button>
                 </div>
-
-                <div class="processing" style="position: relative;">
-                    <div class="scan-line"></div>
+                <div class="card-body" style="padding:0; flex:1; overflow-y:auto; max-height:400px;" id="queueList">
+                    <div style="padding:2rem; text-align:center; color:var(--text-muted);">No items in queue</div>
                 </div>
+                <div style="padding:1rem; border-top:1px solid var(--border); display:flex; gap:10px;">
+                    <button id="pauseBtn" class="btn" style="flex:1; background:var(--surface-hover);">Pause 1h</button>
+                    <button id="startBtn" class="btn btn-primary" style="flex:1;" onclick="startProcessing()">Start
+                        Now</button>
+                </div>
+            </div>
 
-                <div class="panel-body" style="padding: 0; display: flex; flex-direction: column; height: 100%;">
-                    <div id="queueList" class="queue-list" style="flex: 1;">
-                        <div style="padding: 20px; text-align: center; color: var(--text-faint); font-size: 11px;">
-                            NO TASKS PENDING
+            <div class="card">
+                <div class="card-header">
+                    <span>Recent Activity</span>
+                    <button class="toggle-logs" onclick="toggleRawLogs()">Show Debug Logs</button>
+                </div>
+                <div class="card-body" style="padding:1rem;">
+                    <div id="activityFeed" class="activity-feed">
+                        <!-- User friendly logs go here -->
+                        <div class="activity-item">
+                            <div class="activity-icon">🚀</div>
+                            <div>System initialized and ready.</div>
                         </div>
                     </div>
-
-                    <div class="panel-head" style="background: #080808; border-top: 1px solid var(--border);">
-                        <span class="panel-title">System Log</span>
-                    </div>
-                    <div id="logsContainer" class="terminal">
-                        <div class="log-line">> System initialized...</div>
-                    </div>
-
-                    <div
-                        style="padding: 12px; border-top: 1px solid var(--border); display: flex; flex-direction: column; gap: 8px;">
-                        <button id="pauseBtn" class="btn w-full"
-                            style="border-color: #fbbf24; color: #fbbf24; background: rgba(251, 191, 36, 0.1);">PAUSE
-                            1H</button>
-                        <button id="startBtn" class="btn btn-primary w-full" onclick="startProcessing()">START
-                            PROCESS</button>
+                    <div id="rawLogs">
+                        <!-- Raw textual logs -->
                     </div>
                 </div>
             </div>
@@ -564,286 +428,244 @@
     </div>
 
     <script>
-        // --- Logic remains strictly compatible with backend ---
+        // --- Logic ---
         let evtSource;
-        let currentProcessingId = null;
-
-        // Metadata Cache
+        let lastLog = '';
         const metaCache = JSON.parse(localStorage.getItem('yt2ia_meta_cache') || '{}');
+
+        // Toggle Debug Logs
+        function toggleRawLogs() {
+            const el = document.getElementById('rawLogs');
+            const btn = document.querySelector('.toggle-logs');
+            if (el.style.display === 'block') {
+                el.style.display = 'none';
+                btn.innerText = 'Show Debug Logs';
+            } else {
+                el.style.display = 'block';
+                btn.innerText = 'Hide Debug Logs';
+            }
+        }
 
         async function getArtistMeta(id) {
             if (metaCache[id]) return metaCache[id];
-
             try {
-                // Use new specific endpoint
                 const res = await fetch(`/api/meta?id=${id}`);
                 const data = await res.json();
-
-                if (data.artistName) {
+                if (data.artistName || data.name) { // Handle both API styles if needed
                     const meta = {
-                        name: data.artistName,
-                        thumb: data.artistAvatar || ''
+                        name: data.artistName || data.name,
+                        thumb: data.artistAvatar || (data.thumbnails && data.thumbnails[0]?.url) || ''
                     };
                     metaCache[id] = meta;
                     localStorage.setItem('yt2ia_meta_cache', JSON.stringify(metaCache));
                     return meta;
                 }
-            } catch (e) { console.error(e); }
-            return null;
+            } catch (e) { }
+            return { name: id, thumb: '' };
         }
 
+        function addActivity(msg, type = 'info') {
+            const feed = document.getElementById('activityFeed');
+            const div = document.createElement('div');
+            div.className = 'activity-item';
+
+            let icon = 'ℹ️';
+            if (type === 'download') icon = '⬇️';
+            if (type === 'upload') icon = '⬆️';
+            if (type === 'success') icon = '✅';
+            if (type === 'error') icon = '⚠️';
+
+            div.innerHTML = `<div class="activity-icon">${icon}</div><div>${msg}</div>`;
+            feed.insertBefore(div, feed.firstChild);
+
+            if (feed.children.length > 20) feed.lastChild.remove();
+        }
+
+        function updateSystemStatus(data) {
+            const badge = document.getElementById('system-status');
+            const text = document.getElementById('status-text');
+            const now = Date.now() / 1000;
+
+            if (data.paused_until > now) {
+                badge.className = 'status-badge paused';
+                const mm = Math.ceil((data.paused_until - now) / 60);
+                text.innerText = `Paused (${mm}m)`;
+                document.getElementById('pauseBtn').innerText = "Resume";
+                document.getElementById('pauseBtn').onclick = () => fetch('/api/resume');
+            } else if (data.is_processing) {
+                badge.className = 'status-badge processing';
+                text.innerText = 'Processing...';
+                document.getElementById('pauseBtn').innerText = "Pause 1h";
+                document.getElementById('pauseBtn').onclick = () => fetch('/api/pause?duration=3600');
+            } else {
+                badge.className = 'status-badge active';
+                text.innerText = 'System Ready';
+                document.getElementById('pauseBtn').innerText = "Pause 1h";
+                document.getElementById('pauseBtn').onclick = () => fetch('/api/pause?duration=3600');
+            }
+        }
+
+        function updateCurrentJob(data) {
+            const card = document.getElementById('current-job-card');
+
+            if (!data.is_processing || !data.active_jobs || Object.keys(data.active_jobs).length === 0) {
+                card.style.display = 'none';
+                return;
+            }
+
+            card.style.display = 'flex';
+            const jobId = Object.keys(data.active_jobs)[0];
+            const job = data.active_jobs[jobId];
+
+            // Title & Artist
+            let displayTitle = job.title || jobId;
+            if (job.artist && job.artist !== 'Unknown') {
+                displayTitle = `${job.title} - ${job.artist}`;
+            }
+            document.getElementById('curr-title').innerText = displayTitle;
+
+            // Status & Size
+            let statusText = job.status;
+            if (job.state === 'downloading' && job.total_size) {
+                const mb = (job.total_size / (1024 * 1024)).toFixed(1);
+                statusText += ` (${mb} MB)`;
+            }
+            document.getElementById('curr-status').innerText = statusText;
+
+            document.getElementById('curr-percent').innerText = `${job.progress || 0}%`;
+            document.getElementById('progress-bar').style.width = `${job.progress || 0}%`;
+
+            // Source
+            if (job.source) {
+                document.getElementById('current-source').innerText = `Source: ${job.source}`;
+            } else {
+                // Fallback detection
+                if (job.status.includes('Zeabur')) document.getElementById('current-source').innerText = 'Source: Zeabur';
+                else if (job.status.includes('Piped')) document.getElementById('current-source').innerText = 'Source: Piped';
+                else if (job.status.includes('RapidAPI')) document.getElementById('current-source').innerText = 'Source: RapidAPI';
+                else document.getElementById('current-source').innerText = 'Source: Auto';
+            }
+        }
+
+        // --- Init ---
         document.addEventListener('DOMContentLoaded', () => {
-            initSSE();
+            const evtSource = new EventSource("/stream");
+
+            evtSource.onmessage = (e) => {
+                const data = JSON.parse(e.data);
+
+                // Stats
+                document.getElementById('processed-count').innerText = data.stats?.processed || 0;
+                document.getElementById('queue-size').innerText = data.queue_count;
+                document.getElementById('idle-time').innerText = `${data.idle_seconds}s`;
+
+                updateSystemStatus(data);
+                updateCurrentJob(data);
+
+                // Logs Parsing for User Feed
+                if (data.logs && data.logs.length) {
+                    const latest = data.logs[data.logs.length - 1];
+                    if (latest !== lastLog) {
+                        lastLog = latest;
+                        const rawDiv = document.getElementById('rawLogs');
+                        rawDiv.innerHTML += `<div>> ${latest}</div>`;
+                        rawDiv.scrollTop = rawDiv.scrollHeight;
+
+                        // Smart Activity Feed Logic
+                        if (latest.includes('Downloading:')) return; // Ignore spammy progress logs
+
+                        if (latest.includes('Download complete')) addActivity('Download finished', 'download');
+                        else if (latest.includes('Uploading to IA')) addActivity('Uploading to Archive.org...', 'upload');
+                        else if (latest.includes('Upload success')) addActivity('Archived successfully!', 'success');
+                        else if (latest.includes('Source:')) addActivity(latest.split('timestamp')[0], 'info');
+                        else if (latest.includes('ERROR')) addActivity(latest, 'error');
+                    }
+                }
+            };
+
             refreshQueue();
             setupSearch();
             setupManual();
         });
 
-        // Init SSE
-        function initSSE() {
-            evtSource = new EventSource("/stream");
-            evtSource.onmessage = (e) => {
-                const data = JSON.parse(e.data);
-
-                // Update stats
-                document.getElementById('idle').innerText = `${data.idle_seconds}s`;
-                document.getElementById('stat-queued').innerText = data.queue_count;
-                document.getElementById('stat-processed').innerText = data.stats?.processed || 0;
-
-                // Update Status UI
-                const statusBadge = document.getElementById('status-badge');
-                const statusText = document.getElementById('status-text');
-                const startBtn = document.getElementById('startBtn');
-                const pauseBtn = document.getElementById('pauseBtn');
-                const queuePanel = document.querySelector('.processing').parentElement;
-
-                const now = Date.now() / 1000;
-                const isPaused = data.paused_until > now;
-
-                if (isPaused) {
-                    statusBadge.className = 'status-badge active';
-                    statusBadge.style.color = '#fbbf24'; // Amber
-                    statusBadge.style.borderColor = 'rgba(251, 191, 36, 0.3)';
-                    statusBadge.querySelector('.status-dot').style.background = '#fbbf24';
-                    statusBadge.querySelector('.status-dot').style.boxShadow = '0 0 8px #fbbf24';
-
-                    const remaining = Math.ceil((data.paused_until - now) / 60);
-                    statusText.innerText = `PAUSED (${remaining}m)`;
-
-                    startBtn.innerText = 'RESUME NOW';
-                    startBtn.onclick = resumeProcessing;
-                    startBtn.disabled = false;
-                    startBtn.className = 'btn btn-primary w-full'; // Reset style
-
-                    if (pauseBtn) {
-                        pauseBtn.innerText = "RESUME";
-                        pauseBtn.onclick = resumeProcessing;
-                    }
-
-                    document.querySelector('.scan-line').style.display = 'none';
-
-                } else if (data.is_processing) {
-                    statusBadge.className = 'status-badge active';
-                    // Blue default style
-                    statusBadge.style.color = '';
-                    statusBadge.style.borderColor = '';
-                    statusBadge.querySelector('.status-dot').style.background = '';
-                    statusBadge.querySelector('.status-dot').style.boxShadow = '';
-
-                    statusText.innerText = 'PROCESSING ACTIVE';
-                    startBtn.disabled = true;
-                    startBtn.innerText = 'WORKER RUNNING...';
-
-                    if (pauseBtn) {
-                        pauseBtn.innerText = "PAUSE 1H";
-                        pauseBtn.onclick = pauseProcessing;
-                    }
-                    document.querySelector('.scan-line').style.display = 'block';
-                } else {
-                    statusBadge.className = 'status-badge';
-                    // Reset inline styles
-                    statusBadge.style.color = '';
-                    statusBadge.style.borderColor = '';
-                    statusBadge.querySelector('.status-dot').style.background = '';
-                    statusBadge.querySelector('.status-dot').style.boxShadow = '';
-
-                    statusText.innerText = 'SYSTEM READY';
-                    startBtn.disabled = false;
-                    startBtn.innerText = 'START PROCESS';
-                    startBtn.onclick = startProcessing;
-
-                    if (pauseBtn) {
-                        pauseBtn.innerText = "PAUSE 1H";
-                        pauseBtn.onclick = pauseProcessing;
-                    }
-                    document.querySelector('.scan-line').style.display = 'none';
-                }
-
-                // Render Active Jobs
-                renderActiveJobs(data.active_jobs);
-
-                // Logs
-                if (data.logs && data.logs.length) {
-                    const logsEl = document.getElementById('logsContainer');
-                    const newLogs = data.logs.map(l => `<div class="log-line">> ${l}</div>`).join('');
-                    logsEl.innerHTML = newLogs; // Replace to avoid dupe stream issues
-                    logsEl.scrollTop = logsEl.scrollHeight;
-                }
-
-                // Refresh Queue if ID changed
-                if (data.current_id !== currentProcessingId) {
-                    currentProcessingId = data.current_id;
-                    refreshQueue();
-                }
-            };
-        }
-
-        function renderActiveJobs(jobs) {
-            const container = document.getElementById('active-jobs-container');
-            if (!jobs || Object.keys(jobs).length === 0) {
-                container.innerHTML = '';
-                return;
-            }
-
-            container.innerHTML = Object.entries(jobs).map(([id, job]) => `
-                <div class="panel animate-enter">
-                    <div class="panel-body" style="padding: 12px;">
-                        <div style="display:flex; justify-content:space-between; margin-bottom:8px;">
-                            <span style="font-weight:600; font-size:12px;">${id}</span>
-                            <span style="color:#3b82f6; font-size:11px; font-weight:600;">${job.progress || 0}%</span>
-                        </div>
-                        <div style="height:4px; background:#222; border-radius:2px; overflow:hidden;">
-                            <div style="height:100%; width:${job.progress || 0}%; background:#3b82f6; transition:width 0.3s;"></div>
-                        </div>
-                        <div style="font-size:10px; color:#666; margin-top:4px;">${job.status}</div>
-                    </div>
-                </div>
-            `).join('');
-        }
-
-        async function startProcessing() {
-            await fetch('/api/start');
-        }
-
-        async function pauseProcessing() {
-            await fetch('/api/pause?duration=3600');
-        }
-
-        async function resumeProcessing() {
-            await fetch('/api/resume');
-        }
-
+        // --- Standard API Calls ---
         async function refreshQueue() {
-            const list = document.getElementById('queueList');
+            const container = document.getElementById('queueList');
             const res = await fetch('/api/queue');
             const data = await res.json();
 
-            if (data.items && data.items.length > 0) {
-                list.innerHTML = data.items.map(id => `
-                    <div class="queue-item ${id === currentProcessingId ? 'active' : ''}" id="q-item-${id}">
-                        <div style="display:flex; align-items:center; gap:10px; overflow:hidden;">
-                            <img src="" class="thumb" style="width:24px; height:24px; opacity:0; transition:opacity 0.3s;" id="thumb-${id}">
-                            <div style="min-width:0;">
-                                <div style="font-weight:500; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;" id="name-${id}">${id}</div>
-                            </div>
-                        </div>
-                        ${id === currentProcessingId ? '<span style="color:#3b82f6; font-size:10px;">● PROCESSING</span>' : ''}
-                    </div>
-                `).join('');
+            if (!data.items || data.items.length === 0) {
+                container.innerHTML = '<div style="padding:2rem; text-align:center; color:var(--text-muted);">No items in queue</div>';
+                return;
+            }
 
-                // Lazy fetch metadata
-                data.items.forEach(async id => {
-                    const meta = await getArtistMeta(id);
-                    if (meta) {
-                        const nameEl = document.getElementById(`name-${id}`);
-                        const thumbEl = document.getElementById(`thumb-${id}`);
-                        if (nameEl) nameEl.innerText = meta.name;
-                        if (thumbEl) {
-                            thumbEl.src = meta.thumb;
-                            thumbEl.style.opacity = 1;
-                        }
+            container.innerHTML = '';
+            for (const id of data.items) {
+                const item = document.createElement('div');
+                item.className = 'queue-item';
+                item.innerHTML = `
+                    <div class="queue-img" id="thumb-${id}"></div>
+                    <div class="queue-info">
+                        <div class="queue-title" id="name-${id}">Loading...</div>
+                        <div class="queue-id">${id}</div>
+                    </div>
+                `;
+                container.appendChild(item);
+
+                // Lazy load meta
+                getArtistMeta(id).then(meta => {
+                    document.getElementById(`name-${id}`).innerText = meta.name;
+                    if (meta.thumb) {
+                        const img = document.getElementById(`thumb-${id}`);
+                        img.style.background = `url(${meta.thumb}) center/cover`;
                     }
                 });
-
-            } else {
-                list.innerHTML = '<div style="padding: 20px; text-align: center; color: var(--text-faint); font-size: 11px;">NO TASKS PENDING</div>';
             }
         }
+
+        async function startProcessing() { await fetch('/api/start'); }
 
         function setupSearch() {
             document.getElementById('searchForm').addEventListener('submit', async (e) => {
                 e.preventDefault();
                 const q = document.getElementById('searchInput').value.trim();
+                const resDiv = document.getElementById('searchResults');
                 if (!q) return;
 
-                const resultsDiv = document.getElementById('searchResults');
-                resultsDiv.innerHTML = '<div style="font-size:11px; color:var(--text-muted); text-align:center;">SEARCHING DATABASE...</div>';
+                resDiv.innerHTML = '<div style="padding:1rem; text-align:center; color:var(--text-muted);">Searching...</div>';
 
                 try {
                     const res = await fetch(`/api/search?q=${encodeURIComponent(q)}&filter=artists`);
                     const data = await res.json();
 
                     if (data.results?.length) {
-                        resultsDiv.innerHTML = data.results.map(a => `
-                            <div class="result-item">
-                                <img src="${a.thumbnails?.[0]?.url || ''}" class="thumb" onerror="this.style.opacity=0">
-                                <div class="meta">
-                                    <div class="title">${a.title}</div>
-                                    <div class="sub">${a.browseId}</div>
+                        resDiv.innerHTML = `<div style="display:flex; flex-direction:column; gap:8px; margin-top:1rem;">` +
+                            data.results.map(a => `
+                                <div style="display:flex; align-items:center; gap:10px; padding:8px; background:rgba(255,255,255,0.05); border-radius:8px;">
+                                    <img src="${a.thumbnails?.[0]?.url}" style="width:32px; height:32px; border-radius:4px; object-fit:cover;">
+                                    <div style="flex:1;">
+                                        <div style="font-size:0.9rem; font-weight:500;">${a.title}</div>
+                                        <div style="font-size:0.7rem; color:var(--text-muted);">${a.browseId}</div>
+                                    </div>
+                                    <button class="btn" style="font-size:0.8rem; padding:4px 8px;" onclick="addArtist('${a.browseId}', '${a.title}')">Add</button>
                                 </div>
-                                <button class="btn" style="height:24px; padding:0 8px; font-size:10px;" onclick="addToQueue('${a.browseId}', this)">ADD</button>
-                            </div>
-                        `).join('');
+                            `).join('') + `</div>`;
                     } else {
-                        resultsDiv.innerHTML = '<div style="font-size:11px; color:var(--text-faint); text-align:center;">NO MATCHES FOUND</div>';
+                        resDiv.innerHTML = '<div style="padding:1rem; text-align:center; color:var(--text-muted);">No results found</div>';
                     }
-                } catch (err) {
-                    resultsDiv.innerHTML = `<div style="font-size:11px; color:#ef4444; text-align:center;">ERROR: ${err.message}</div>`;
+                } catch (e) {
+                    resDiv.innerHTML = '<div style="padding:1rem; text-align:center; color:var(--danger);">Search failed</div>';
                 }
             });
         }
 
-        async function addToQueue(id, btn) {
-            const originalText = btn.innerText;
-            btn.innerText = '...';
-            btn.disabled = true;
-
-            const res = await fetch('/submitartist', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ browse_id: id })
-            });
-            const data = await res.json();
-
-            if (data.duplicate) {
-                btn.innerText = 'EXISTS';
-                btn.style.color = '#fbbf24'; // Amber
-                btn.style.borderColor = '#fbbf24';
-            } else {
-                btn.innerText = '✓';
-                btn.style.color = 'var(--success)';
-                btn.style.borderColor = 'var(--success)';
-            }
-
-            setTimeout(() => {
-                btn.innerText = originalText;
-                btn.style.color = '';
-                btn.style.borderColor = '';
-                btn.disabled = false;
-            }, 2000);
-
-            refreshQueue();
-        }
-
         function setupManual() {
             document.getElementById('manualBtn').addEventListener('click', async () => {
-                const input = document.getElementById('manualInput');
-                const id = input.value.trim();
+                const id = document.getElementById('manualInput').value.trim();
                 if (!id) return;
 
-                const btn = document.getElementById('manualBtn');
-                const originalText = btn.innerText;
-                btn.innerText = 'Adding...';
+                // Optimistic UI
+                addActivity(`Manually adding ID: ${id}`, 'info');
 
                 const res = await fetch('/submit', {
                     method: 'POST',
@@ -853,23 +675,30 @@
                 const data = await res.json();
 
                 if (data.duplicate) {
-                    btn.innerText = 'ALREADY ADDED';
-                    btn.style.color = '#fbbf24';
-                    setTimeout(() => {
-                        btn.innerText = originalText;
-                        btn.style.color = '';
-                    }, 2000);
+                    addActivity(`Skipped duplicate ID: ${id}`, 'warning');
+                    alert('This ID is already in the queue!');
                 } else {
-                    input.value = '';
-                    btn.innerText = 'ADDED ✓';
-                    btn.style.color = 'var(--success)';
-                    setTimeout(() => {
-                        btn.innerText = originalText;
-                        btn.style.color = '';
-                    }, 2000);
+                    addActivity(`Successfully added: ${id}`, 'success');
+                    document.getElementById('manualInput').value = '';
                     refreshQueue();
                 }
             });
+        }
+
+        async function addArtist(id, name) {
+            addActivity(`Adding artist: ${name}...`, 'info');
+            const res = await fetch('/submitartist', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ browse_id: id, name: name })
+            });
+            const data = await res.json();
+            if (data.duplicate) {
+                addActivity(`${name} is already in queue!`, 'warning');
+            } else {
+                addActivity(`${name} added to queue`, 'success');
+                refreshQueue();
+            }
         }
     </script>
 </body>
