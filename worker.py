@@ -355,8 +355,8 @@ def find_zeabur(video_id):
                 best = formats[0]
                 raw = best.get('url')
                 if raw:
-                    enc = (raw)
-                    return f"{enc}", best
+                    enc = urllib.parse.quote(raw)
+                    return f"https://hdtkfyf.zeabur.app/api/proxy?url={enc}", best
     except: pass
     return None, None
 
@@ -493,7 +493,9 @@ async def process_video_async(video_id, metadata_override=None):
     # 3. Upload
     set_status(video_id, "Uploading...")
     try:
-        identifier = "YTMBACKUP"
+        aid = metadata_override.get('artist_id') if metadata_override else None
+        identifier = f"yt2ia-{aid}" if aid else "YTMBACKUP"
+        
         md = {'title': title, 'creator': author, 'mediatype': 'audio', 'collection': 'opensource_audio'}
         r = upload(identifier, files={os.path.basename(success_file): success_file}, metadata=md, access_key=IA_ACCESS_KEY, secret_key=IA_SECRET_KEY)
         
@@ -529,10 +531,10 @@ def process_artist_task(aid):
         r = requests.get(f"{YTIFY_API_BASE}/artist/{aid}", timeout=10)
         if r.status_code==200:
             pid = r.json().get('playlistId')
-            if pid: process_playlist_task(pid)
+            if pid: process_playlist_task(pid, artist_id=aid)
     except: pass
 
-def process_playlist_task(pid):
+def process_playlist_task(pid, artist_id=None):
     try:
         r = requests.get(f"{YTIFY_API_BASE}/playlist/{pid}", timeout=10)
         if r.status_code==200:
@@ -542,7 +544,9 @@ def process_playlist_task(pid):
                 vid = t.get('videoId')
                 if vid and vid not in existing:
                     STATUS["queue"].append({"id": vid, "title": t.get('title')})
-                    process_video_task(vid, {'title': t.get('title'), 'artist': t.get('artist') or t.get('author')})
+                    meta = {'title': t.get('title'), 'artist': t.get('artist') or t.get('author')}
+                    if artist_id: meta['artist_id'] = artist_id
+                    process_video_task(vid, meta)
     except: pass
 
 def handle_submission(inp):

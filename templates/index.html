@@ -4,669 +4,423 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Archive Engine | Dashboard</title>
-    <link
-        href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap"
-        rel="stylesheet">
+    <title>YT2IA - Archiver</title>
     <style>
         :root {
-            --bg: #0f172a;
-            --surface: #1e293b;
-            --surface-hover: #334155;
-            --border: #334155;
-            --text-main: #f8fafc;
-            --text-muted: #94a3b8;
-            --accent: #3b82f6;
-            --success: #10b981;
-            --warning: #fbbf24;
-            --danger: #ef4444;
-            --radius: 12px;
-        }
-
-        * {
-            box-sizing: border-box;
-            margin: 0;
-            padding: 0;
-            outline: none;
+            --bg-color: #0f172a;
+            --card-bg: #1e293b;
+            --text-primary: #f8fafc;
+            --text-secondary: #94a3b8;
+            --accent-color: #3b82f6;
+            --accent-hover: #2563eb;
+            --danger-color: #ef4444;
+            --success-color: #22c55e;
+            --amber-color: #f59e0b;
         }
 
         body {
-            background-color: var(--bg);
-            color: var(--text-main);
-            font-family: 'Inter', sans-serif;
-            min-height: 100vh;
-            display: flex;
-            justify-content: center;
+            font-family: 'Inter', system-ui, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-primary);
+            margin: 0;
             padding: 2rem;
             line-height: 1.5;
         }
 
-        .dashboard {
-            width: 100%;
-            max-width: 1100px;
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
             display: grid;
-            grid-template-columns: 2fr 1.2fr;
+            grid-template-columns: 2fr 1fr;
             gap: 2rem;
         }
 
-        @media (max-width: 900px) {
-            .dashboard {
-                grid-template-columns: 1fr;
-            }
-        }
-
-        /* Shared Components */
         .card {
-            background: var(--surface);
-            border: 1px solid var(--border);
-            border-radius: var(--radius);
-            overflow: hidden;
-            display: flex;
-            flex-direction: column;
+            background-color: var(--card-bg);
+            border-radius: 1rem;
+            padding: 1.5rem;
             box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
         }
 
-        .card-header {
-            padding: 1rem 1.5rem;
-            border-bottom: 1px solid var(--border);
-            background: rgba(0, 0, 0, 0.2);
-            font-weight: 600;
-            font-size: 0.95rem;
+        h2 {
+            margin-top: 0;
+            border-bottom: 1px solid #334155;
+            padding-bottom: 1rem;
+            margin-bottom: 1.5rem;
+        }
+
+        /* Status Bar */
+        .status-bar {
+            grid-column: 1 / -1;
             display: flex;
-            justify-content: space-between;
-            align-items: center;
+            gap: 1rem;
+            margin-bottom: 1rem;
+            flex-wrap: wrap;
         }
 
-        .card-body {
-            padding: 1.5rem;
+        .badge {
+            padding: 0.5rem 1rem;
+            border-radius: 9999px;
+            font-weight: 600;
+            font-size: 0.875rem;
+            background-color: var(--card-bg);
         }
 
-        .btn {
-            background: var(--surface-hover);
-            color: var(--text-main);
-            border: none;
-            padding: 0.6rem 1rem;
-            border-radius: 8px;
-            font-weight: 500;
-            cursor: pointer;
-            transition: all 0.2s;
-            font-size: 0.9rem;
-        }
-
-        .btn:hover {
-            filter: brightness(1.1);
-            transform: translateY(-1px);
-        }
-
-        .btn-primary {
-            background: var(--accent);
+        .badge.processing {
+            background-color: var(--accent-color);
             color: white;
         }
 
-        .input-box {
-            width: 100%;
-            background: rgba(0, 0, 0, 0.2);
-            border: 1px solid var(--border);
-            color: var(--text-main);
-            padding: 0.8rem;
-            border-radius: 8px;
-            font-size: 0.95rem;
+        .badge.idle {
+            background-color: var(--text-secondary);
+            color: #0f172a;
         }
 
-        .input-box:focus {
-            border-color: var(--accent);
+        .badge.paused {
+            background-color: var(--amber-color);
+            color: #0f172a;
         }
 
-        /* Stats Row */
-        .stats-grid {
-            display: grid;
-            grid-template-columns: repeat(3, 1fr);
-            gap: 1rem;
-            margin-bottom: 2rem;
-        }
-
-        .stat-card {
-            background: var(--surface);
-            padding: 1rem;
-            border-radius: var(--radius);
-            border: 1px solid var(--border);
-            text-align: center;
-        }
-
-        .stat-val {
-            font-size: 1.5rem;
-            font-weight: 700;
-            color: var(--accent);
-        }
-
-        .stat-label {
-            font-size: 0.8rem;
-            color: var(--text-muted);
-            text-transform: uppercase;
-            letter-spacing: 0.05em;
-            margin-top: 0.25rem;
-        }
-
-        /* Status Badge */
-        .status-badge {
-            display: inline-flex;
-            align-items: center;
-            gap: 8px;
-            padding: 6px 12px;
-            border-radius: 20px;
-            font-size: 0.85rem;
-            font-weight: 600;
-            background: rgba(255, 255, 255, 0.05);
-            border: 1px solid rgba(255, 255, 255, 0.1);
-        }
-
-        .status-dot {
-            width: 8px;
-            height: 8px;
-            border-radius: 50%;
-            background: var(--text-muted);
-        }
-
-        .status-badge.active .status-dot {
-            background: var(--success);
-            box-shadow: 0 0 8px var(--success);
-        }
-
-        .status-badge.processing .status-dot {
-            background: var(--accent);
-            box-shadow: 0 0 8px var(--accent);
-        }
-
-        .status-badge.paused .status-dot {
-            background: var(--warning);
-            box-shadow: 0 0 8px var(--warning);
-        }
-
-        /* Activity Feed */
-        .activity-feed {
-            max-height: 300px;
-            overflow-y: auto;
+        /* Search Section */
+        .search-box {
             display: flex;
-            flex-direction: column;
             gap: 0.5rem;
+            margin-bottom: 1.5rem;
         }
 
-        .activity-item {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            padding: 10px;
-            background: rgba(0, 0, 0, 0.2);
-            border-radius: 8px;
-            font-size: 0.9rem;
-            animation: fadeIn 0.3s ease;
-        }
-
-        .activity-icon {
-            width: 32px;
-            height: 32px;
-            border-radius: 50%;
-            background: var(--surface-hover);
-            display: flex;
-            align-items: center;
-            justify-content: center;
+        input,
+        select {
+            background-color: #334155;
+            border: 1px solid #475569;
+            color: white;
+            padding: 0.75rem;
+            border-radius: 0.5rem;
             font-size: 1rem;
         }
 
-        /* Queue List */
-        .queue-item {
-            display: flex;
-            align-items: center;
-            gap: 1rem;
-            padding: 12px;
-            border-bottom: 1px solid var(--border);
+        input {
+            flex: 1;
+        }
+
+        button {
+            background-color: var(--accent-color);
+            color: white;
+            border: none;
+            padding: 0.75rem 1.5rem;
+            border-radius: 0.5rem;
+            font-weight: 600;
+            cursor: pointer;
             transition: background 0.2s;
         }
 
-        .queue-item:hover {
-            background: rgba(255, 255, 255, 0.03);
+        button:hover {
+            background-color: var(--accent-hover);
         }
 
-        .queue-img {
-            width: 40px;
-            height: 40px;
-            border-radius: 6px;
-            background: var(--border);
+        .results {
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+            max-height: 600px;
+            overflow-y: auto;
+        }
+
+        .result-item {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            background-color: rgba(255, 255, 255, 0.05);
+            padding: 0.75rem;
+            border-radius: 0.5rem;
+        }
+
+        .result-img {
+            width: 60px;
+            height: 60px;
+            border-radius: 4px;
             object-fit: cover;
         }
 
-        .queue-info {
+        .result-info {
             flex: 1;
-            min-width: 0;
         }
 
-        .queue-title {
+        .result-title {
+            font-weight: 600;
+            font-size: 1.1rem;
+        }
+
+        .result-sub {
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+        }
+
+        .add-btn {
+            background-color: var(--success-color);
+            padding: 0.5rem 1rem;
+            font-size: 0.875rem;
+        }
+
+        .add-btn.exists {
+            background-color: var(--amber-color);
+            cursor: not-allowed;
+        }
+
+        /* Sidebar / Queue */
+        .queue-list {
+            display: flex;
+            flex-direction: column;
+            gap: 0.75rem;
+            max-height: 500px;
+            overflow-y: auto;
+        }
+
+        .queue-item {
+            background-color: rgba(0, 0, 0, 0.2);
+            padding: 0.75rem;
+            border-radius: 0.5rem;
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            border-left: 3px solid transparent;
+        }
+
+        .queue-item.active {
+            border-left-color: var(--accent-color);
+            background-color: rgba(59, 130, 246, 0.1);
+        }
+
+        .q-avatar {
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            background-color: #334155;
+            background-size: cover;
+        }
+
+        .q-info {
+            flex: 1;
+            overflow: hidden;
+        }
+
+        .q-name {
             font-weight: 500;
-            font-size: 0.95rem;
             white-space: nowrap;
             overflow: hidden;
             text-overflow: ellipsis;
         }
 
-        .queue-id {
-            font-size: 0.8rem;
-            color: var(--text-muted);
-            font-family: 'JetBrains Mono', monospace;
-        }
-
-        .queue-status {
+        .q-id {
             font-size: 0.75rem;
-            font-weight: 600;
-            text-transform: uppercase;
+            color: var(--text-secondary);
+            font-family: monospace;
         }
 
-        @keyframes fadeIn {
-            from {
-                opacity: 0;
-                transform: translateY(5px);
-            }
-
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
-        }
-
-        /* Toggle Switch */
-        .toggle-logs {
-            font-size: 0.8rem;
-            color: var(--text-muted);
-            background: none;
-            border: none;
-            cursor: pointer;
-            text-decoration: underline;
-        }
-
-        #rawLogs {
-            display: none;
-            margin-top: 1rem;
-            font-family: 'JetBrains Mono';
-            font-size: 0.8rem;
-            color: var(--text-muted);
-            height: 150px;
-            overflow-y: auto;
-            background: #000;
+        .logs {
+            grid-column: 1 / -1;
+            background-color: #000;
+            color: #22c55e;
+            font-family: monospace;
             padding: 1rem;
-            border-radius: 8px;
+            border-radius: 0.5rem;
+            height: 200px;
+            overflow-y: auto;
+            font-size: 0.9rem;
         }
 
-        /* Progress Bar */
-        .progress-container {
-            width: 100%;
-            background: #000;
-            height: 6px;
-            border-radius: 3px;
-            overflow: hidden;
-            margin-top: 8px;
+        .controls {
+            display: flex;
+            gap: 0.5rem;
+            margin-bottom: 1rem;
         }
 
-        .progress-bar {
-            height: 100%;
-            background: var(--accent);
-            width: 0%;
-            transition: width 0.3s ease;
+        .pause-btn {
+            background-color: var(--amber-color);
+        }
+
+        .resume-btn {
+            background-color: var(--success-color);
         }
     </style>
 </head>
 
 <body>
+    <div class="status-bar">
+        <div id="status-badge" class="badge idle">Idle</div>
+        <div class="badge">Queue: <span id="queue-count">0</span></div>
+        <div class="badge">Idle Time: <span id="idle-timer">0</span>s</div>
+        <div class="badge">Current Index: <span id="current-index">0</span></div>
+    </div>
 
-    <div class="dashboard">
-        <!-- Left Column: Controls & Feed -->
-        <main>
-            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 2rem;">
-                <h1 style="font-size:1.5rem; font-weight:700;">Archive Engine</h1>
-                <div id="system-status" class="status-badge">
-                    <div class="status-dot"></div>
-                    <span id="status-text">System Ready</span>
-                </div>
+    <div class="container">
+        <!-- Left: Search & Manual -->
+        <div class="card">
+            <h2>Search & Submit</h2>
+
+            <!-- Manual Input -->
+            <div class="search-box">
+                <input type="text" id="manual-id" placeholder="Enter ID directly (Video/Playlist/Artist/Channel)">
+                <button onclick="submitManual()">Submit ID</button>
             </div>
 
-            <div class="stats-grid">
-                <div class="stat-card">
-                    <div class="stat-val" id="processed-count">0</div>
-                    <div class="stat-label">Processed Items</div>
-                </div>
-                <div class="stat-card">
-                    <div class="stat-val" id="queue-size">0</div>
-                    <div class="stat-label">In Queue</div>
-                </div>
-                <div class="stat-card">
-                    <div class="stat-val" id="idle-time">0s</div>
-                    <div class="stat-label">Idle Time</div>
-                </div>
+            <hr style="border-color: #334155; margin: 1.5rem 0;">
+
+            <!-- Search -->
+            <div class="search-box">
+                <input type="text" id="search-query" placeholder="Search for artist, song, etc..."
+                    onkeypress="handleEnter(event)">
+                <select id="search-filter">
+                    <option value="artists">Artists</option>
+                    <option value="songs">Songs</option>
+                    <option value="videos">Videos</option>
+                    <option value="albums">Albums</option>
+                    <option value="playlists">Playlists</option>
+                </select>
+                <button onclick="performSearch()">Search</button>
             </div>
 
-            <div id="current-job-card" class="card" style="margin-bottom: 2rem; display: none;">
-                <div class="card-header">
-                    <span>Currently Processing</span>
-                    <span id="current-source"
-                        style="font-size:0.8rem; color:var(--text-muted); font-weight:400;">Source: Auto</span>
-                </div>
-                <div class="card-body">
-                    <div style="display:flex; justify-content:space-between; align-items:flex-end;">
-                        <div>
-                            <div id="curr-title" style="font-size:1.1rem; font-weight:600; margin-bottom:4px;">
-                                Loading...</div>
-                            <div id="curr-status" style="color:var(--accent);">Initializing...</div>
-                        </div>
-                        <div id="curr-percent" style="font-size:1.5rem; font-weight:700; color:var(--text-muted);">0%
-                        </div>
-                    </div>
-                    <div class="progress-container">
-                        <div id="progress-bar" class="progress-bar"></div>
-                    </div>
-                </div>
+            <div id="results-area" class="results"></div>
+        </div>
+
+        <!-- Right: Queue & Controls -->
+        <div class="card">
+            <h2>Queue Control</h2>
+
+            <div class="controls">
+                <button id="pause-btn" class="pause-btn" onclick="togglePause()">PAUSE 1H</button>
+                <button onclick="startProcessing()" style="background-color: var(--success-color)">FORCE START</button>
             </div>
 
-            <div class="card">
-                <div class="card-header">
-                    <span>Add to Queue</span>
-                </div>
-                <div class="card-body">
-                    <form id="searchForm" style="display:flex; gap:10px; margin-bottom: 1rem;">
-                        <input type="text" id="searchInput" class="input-box" placeholder="Search for an artist..."
-                            autocomplete="off">
-                        <button type="submit" class="btn btn-primary">Search</button>
-                    </form>
-                    <div id="searchResults"></div>
-
-                    <div style="margin: 1.5rem 0; border-top: 1px solid var(--border);"></div>
-
-                    <div style="display:flex; gap:10px;">
-                        <input type="text" id="manualInput" class="input-box"
-                            placeholder="Enter Playlist/Video ID directly...">
-                        <button id="manualBtn" class="btn">Add ID</button>
-                    </div>
-                </div>
-            </div>
-        </main>
-
-        <!-- Right Column: Queue & Logs -->
-        <aside style="display:flex; flex-direction:column; gap: 2rem;">
-
-            <div class="card" style="flex: 1;">
-                <div class="card-header">
-                    <span>Execution Queue</span>
-                    <button class="btn" style="padding:4px 8px; font-size:0.8rem;" onclick="refreshQueue()">↻</button>
-                </div>
-                <div class="card-body" style="padding:0; flex:1; overflow-y:auto; max-height:400px;" id="queueList">
-                    <div style="padding:2rem; text-align:center; color:var(--text-muted);">No items in queue</div>
-                </div>
-                <div style="padding:1rem; border-top:1px solid var(--border); display:flex; gap:10px;">
-                    <button id="pauseBtn" class="btn" style="flex:1; background:var(--surface-hover);">Pause 1h</button>
-                    <button id="startBtn" class="btn btn-primary" style="flex:1;" onclick="startProcessing()">Start
-                        Now</button>
-                </div>
+            <div id="queue-area" class="queue-list">
+                <div style="text-align: center; color: #94a3b8;">Queue empty</div>
             </div>
 
-            <div class="card">
-                <div class="card-header">
-                    <span>Recent Activity</span>
-                    <button class="toggle-logs" onclick="toggleRawLogs()">Show Debug Logs</button>
-                </div>
-                <div class="card-body" style="padding:1rem;">
-                    <div id="activityFeed" class="activity-feed">
-                        <!-- User friendly logs go here -->
-                        <div class="activity-item">
-                            <div class="activity-icon">🚀</div>
-                            <div>System initialized and ready.</div>
-                        </div>
-                    </div>
-                    <div id="rawLogs">
-                        <!-- Raw textual logs -->
-                    </div>
-                </div>
-            </div>
+            <br>
+            <a href="/admin" style="color: var(--accent-color); text-decoration: none;">&rarr; Go to Admin Dashboard</a>
+        </div>
 
-        </aside>
+        <!-- Logs -->
+        <div class="logs" id="log-window">
+            <div>System initialized...</div>
+        </div>
     </div>
 
     <script>
-        // --- Logic ---
-        let evtSource;
-        let lastLog = '';
+        // State
+        let isPaused = false;
         const metaCache = JSON.parse(localStorage.getItem('yt2ia_meta_cache') || '{}');
 
-        // Toggle Debug Logs
-        function toggleRawLogs() {
-            const el = document.getElementById('rawLogs');
-            const btn = document.querySelector('.toggle-logs');
-            if (el.style.display === 'block') {
-                el.style.display = 'none';
-                btn.innerText = 'Show Debug Logs';
-            } else {
-                el.style.display = 'block';
-                btn.innerText = 'Hide Debug Logs';
-            }
+        // Utils
+        function handleEnter(e) {
+            if (e.key === 'Enter') performSearch();
         }
 
-        async function getArtistMeta(id) {
+        async function fetchMeta(id) {
             if (metaCache[id]) return metaCache[id];
+
             try {
+                // Determine if it's an artist ID (usually 24 chars starting with UC)
+                // But simplified: just try to fetch
                 const res = await fetch(`/api/meta?id=${id}`);
                 const data = await res.json();
-                if (data.artistName || data.name) { // Handle both API styles if needed
+                if (data.name) {
                     const meta = {
-                        name: data.artistName || data.name,
-                        thumb: data.artistAvatar || (data.thumbnails && data.thumbnails[0]?.url) || ''
+                        name: data.name,
+                        avatar: (data.thumbnails && data.thumbnails.length) ? data.thumbnails[0].url : null
                     };
                     metaCache[id] = meta;
                     localStorage.setItem('yt2ia_meta_cache', JSON.stringify(metaCache));
                     return meta;
                 }
-            } catch (e) { }
-            return { name: id, thumb: '' };
+            } catch (e) { console.log("Meta fetch failed", e); }
+            return null;
         }
 
-        function addActivity(msg, type = 'info') {
-            const feed = document.getElementById('activityFeed');
-            const div = document.createElement('div');
-            div.className = 'activity-item';
+        // Search
+        async function performSearch() {
+            const query = document.getElementById('search-query').value;
+            const filter = document.getElementById('search-filter').value;
+            const area = document.getElementById('results-area');
 
-            let icon = 'ℹ️';
-            if (type === 'download') icon = '⬇️';
-            if (type === 'upload') icon = '⬆️';
-            if (type === 'success') icon = '✅';
-            if (type === 'error') icon = '⚠️';
+            if (!query) return;
 
-            div.innerHTML = `<div class="activity-icon">${icon}</div><div>${msg}</div>`;
-            feed.insertBefore(div, feed.firstChild);
+            area.innerHTML = '<div style="text-align:center">Searching...</div>';
 
-            if (feed.children.length > 20) feed.lastChild.remove();
-        }
+            try {
+                const res = await fetch(`/api/search?q=${encodeURIComponent(query)}&filter=${filter}`);
+                const data = await res.json();
 
-        function updateSystemStatus(data) {
-            const badge = document.getElementById('system-status');
-            const text = document.getElementById('status-text');
-            const now = Date.now() / 1000;
+                area.innerHTML = '';
 
-            if (data.paused_until > now) {
-                badge.className = 'status-badge paused';
-                const mm = Math.ceil((data.paused_until - now) / 60);
-                text.innerText = `Paused (${mm}m)`;
-                document.getElementById('pauseBtn').innerText = "Resume";
-                document.getElementById('pauseBtn').onclick = () => fetch('/api/resume');
-            } else if (data.is_processing) {
-                badge.className = 'status-badge processing';
-                text.innerText = 'Processing...';
-                document.getElementById('pauseBtn').innerText = "Pause 1h";
-                document.getElementById('pauseBtn').onclick = () => fetch('/api/pause?duration=3600');
-            } else {
-                badge.className = 'status-badge active';
-                text.innerText = 'System Ready';
-                document.getElementById('pauseBtn').innerText = "Pause 1h";
-                document.getElementById('pauseBtn').onclick = () => fetch('/api/pause?duration=3600');
-            }
-        }
-
-        function updateCurrentJob(data) {
-            const card = document.getElementById('current-job-card');
-
-            if (!data.is_processing || !data.active_jobs || Object.keys(data.active_jobs).length === 0) {
-                card.style.display = 'none';
-                return;
-            }
-
-            card.style.display = 'flex';
-            const jobId = Object.keys(data.active_jobs)[0];
-            const job = data.active_jobs[jobId];
-
-            // Title & Artist
-            let displayTitle = job.title || jobId;
-            if (job.artist && job.artist !== 'Unknown') {
-                displayTitle = `${job.title} - ${job.artist}`;
-            }
-            document.getElementById('curr-title').innerText = displayTitle;
-
-            // Status & Size
-            let statusText = job.status;
-            if (job.state === 'downloading' && job.total_size) {
-                const mb = (job.total_size / (1024 * 1024)).toFixed(1);
-                statusText += ` (${mb} MB)`;
-            }
-            document.getElementById('curr-status').innerText = statusText;
-
-            document.getElementById('curr-percent').innerText = `${job.progress || 0}%`;
-            document.getElementById('progress-bar').style.width = `${job.progress || 0}%`;
-
-            // Source
-            if (job.source) {
-                document.getElementById('current-source').innerText = `Source: ${job.source}`;
-            } else {
-                // Fallback detection
-                if (job.status.includes('Zeabur')) document.getElementById('current-source').innerText = 'Source: Zeabur';
-                else if (job.status.includes('Piped')) document.getElementById('current-source').innerText = 'Source: Piped';
-                else if (job.status.includes('RapidAPI')) document.getElementById('current-source').innerText = 'Source: RapidAPI';
-                else document.getElementById('current-source').innerText = 'Source: Auto';
-            }
-        }
-
-        // --- Init ---
-        document.addEventListener('DOMContentLoaded', () => {
-            const evtSource = new EventSource("/stream");
-
-            evtSource.onmessage = (e) => {
-                const data = JSON.parse(e.data);
-
-                // Stats
-                document.getElementById('processed-count').innerText = data.stats?.processed || 0;
-                document.getElementById('queue-size').innerText = data.queue_count;
-                document.getElementById('idle-time').innerText = `${data.idle_seconds}s`;
-
-                updateSystemStatus(data);
-                updateCurrentJob(data);
-
-                // Logs Parsing for User Feed
-                if (data.logs && data.logs.length) {
-                    const latest = data.logs[data.logs.length - 1];
-                    if (latest !== lastLog) {
-                        lastLog = latest;
-                        const rawDiv = document.getElementById('rawLogs');
-                        rawDiv.innerHTML += `<div>> ${latest}</div>`;
-                        rawDiv.scrollTop = rawDiv.scrollHeight;
-
-                        // Smart Activity Feed Logic
-                        if (latest.includes('Downloading:')) return; // Ignore spammy progress logs
-
-                        if (latest.includes('Download complete')) addActivity('Download finished', 'download');
-                        else if (latest.includes('Uploading to IA')) addActivity('Uploading to Archive.org...', 'upload');
-                        else if (latest.includes('Upload success')) addActivity('Archived successfully!', 'success');
-                        else if (latest.includes('Source:')) addActivity(latest.split('timestamp')[0], 'info');
-                        else if (latest.includes('ERROR')) addActivity(latest, 'error');
-                    }
+                if (!data || data.length === 0) {
+                    area.innerHTML = '<div style="text-align:center">No results found</div>';
+                    return;
                 }
-            };
 
-            refreshQueue();
-            setupSearch();
-            setupManual();
-        });
+                data.forEach(item => {
+                    const div = document.createElement('div');
+                    div.className = 'result-item';
 
-        // --- Standard API Calls ---
-        async function refreshQueue() {
-            const container = document.getElementById('queueList');
-            const res = await fetch('/api/queue');
-            const data = await res.json();
+                    const imgUrl = (item.thumbnails && item.thumbnails.length) ? item.thumbnails[0].url : '';
 
-            if (!data.items || data.items.length === 0) {
-                container.innerHTML = '<div style="padding:2rem; text-align:center; color:var(--text-muted);">No items in queue</div>';
-                return;
-            }
-
-            container.innerHTML = '';
-            for (const id of data.items) {
-                const item = document.createElement('div');
-                item.className = 'queue-item';
-                item.innerHTML = `
-                    <div class="queue-img" id="thumb-${id}"></div>
-                    <div class="queue-info">
-                        <div class="queue-title" id="name-${id}">Loading...</div>
-                        <div class="queue-id">${id}</div>
-                    </div>
-                `;
-                container.appendChild(item);
-
-                // Lazy load meta
-                getArtistMeta(id).then(meta => {
-                    document.getElementById(`name-${id}`).innerText = meta.name;
-                    if (meta.thumb) {
-                        const img = document.getElementById(`thumb-${id}`);
-                        img.style.background = `url(${meta.thumb}) center/cover`;
-                    }
+                    div.innerHTML = `
+                        <img src="${imgUrl}" class="result-img" onerror="this.style.display='none'">
+                        <div class="result-info">
+                            <div class="result-title">${item.name || item.title}</div>
+                            <div class="result-sub">${item.browseId || item.videoId} • ${filter}</div>
+                        </div>
+                        <button class="add-btn" id="btn-${item.browseId || item.videoId}" onclick="addToQueue('${item.browseId || item.videoId}', '${item.name || item.title}')">Add</button>
+                    `;
+                    area.appendChild(div);
                 });
+
+            } catch (e) {
+                area.innerHTML = '<div style="color:var(--danger-color)">Search failed</div>';
             }
         }
 
-        async function startProcessing() { await fetch('/api/start'); }
+        // Actions
+        async function addToQueue(id, name) {
+            const btn = document.getElementById(`btn-${id}`);
+            if (btn) btn.textContent = '...';
 
-        function setupSearch() {
-            document.getElementById('searchForm').addEventListener('submit', async (e) => {
-                e.preventDefault();
-                const q = document.getElementById('searchInput').value.trim();
-                const resDiv = document.getElementById('searchResults');
-                if (!q) return;
+            let url = '/submit'; // default
+            let body = { input_id: id };
 
-                resDiv.innerHTML = '<div style="padding:1rem; text-align:center; color:var(--text-muted);">Searching...</div>';
+            // Heuristic for artists
+            if (id.startsWith('UC') && id.length > 20) {
+                url = '/submitartist';
+                body = { browse_id: id, name: name || "" };
+            }
 
-                try {
-                    const res = await fetch(`/api/search?q=${encodeURIComponent(q)}&filter=artists`);
-                    const data = await res.json();
+            try {
+                const res = await fetch(url, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(body)
+                });
+                const data = await res.json();
 
-                    if (data.results?.length) {
-                        resDiv.innerHTML = `<div style="display:flex; flex-direction:column; gap:8px; margin-top:1rem;">` +
-                            data.results.map(a => `
-                                <div style="display:flex; align-items:center; gap:10px; padding:8px; background:rgba(255,255,255,0.05); border-radius:8px;">
-                                    <img src="${a.thumbnails?.[0]?.url}" style="width:32px; height:32px; border-radius:4px; object-fit:cover;">
-                                    <div style="flex:1;">
-                                        <div style="font-size:0.9rem; font-weight:500;">${a.title}</div>
-                                        <div style="font-size:0.7rem; color:var(--text-muted);">${a.browseId}</div>
-                                    </div>
-                                    <button class="btn" style="font-size:0.8rem; padding:4px 8px;" onclick="addArtist('${a.browseId}', '${a.title}')">Add</button>
-                                </div>
-                            `).join('') + `</div>`;
+                if (btn) {
+                    if (data.duplicate) {
+                        btn.textContent = 'EXISTS';
+                        btn.className = 'add-btn exists';
                     } else {
-                        resDiv.innerHTML = '<div style="padding:1rem; text-align:center; color:var(--text-muted);">No results found</div>';
+                        btn.textContent = 'ADDED';
+                        setTimeout(() => btn.textContent = 'Add', 2000);
                     }
-                } catch (e) {
-                    resDiv.innerHTML = '<div style="padding:1rem; text-align:center; color:var(--danger);">Search failed</div>';
                 }
-            });
+            } catch (e) {
+                if (btn) btn.textContent = 'Error';
+            }
         }
 
-        function setupManual() {
-            document.getElementById('manualBtn').addEventListener('click', async () => {
-                const id = document.getElementById('manualInput').value.trim();
-                if (!id) return;
+        async function submitManual() {
+            const input = document.getElementById('manual-id');
+            const id = input.value.trim();
+            if (!id) return;
 
-                // Optimistic UI
-                addActivity(`Manually adding ID: ${id}`, 'info');
-
+            try {
                 const res = await fetch('/submit', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
@@ -675,31 +429,137 @@
                 const data = await res.json();
 
                 if (data.duplicate) {
-                    addActivity(`Skipped duplicate ID: ${id}`, 'warning');
-                    alert('This ID is already in the queue!');
+                    alert('Already in queue!');
                 } else {
-                    addActivity(`Successfully added: ${id}`, 'success');
-                    document.getElementById('manualInput').value = '';
-                    refreshQueue();
+                    alert('Added to queue');
+                    input.value = '';
                 }
-            });
+            } catch (e) { alert('Failed'); }
         }
 
-        async function addArtist(id, name) {
-            addActivity(`Adding artist: ${name}...`, 'info');
-            const res = await fetch('/submitartist', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ browse_id: id, name: name })
-            });
-            const data = await res.json();
-            if (data.duplicate) {
-                addActivity(`${name} is already in queue!`, 'warning');
+        async function togglePause() {
+            const btn = document.getElementById('pause-btn');
+            if (isPaused) {
+                // Resume
+                await fetch('/api/resume');
+                // State will update via SSE
             } else {
-                addActivity(`${name} added to queue`, 'success');
-                refreshQueue();
+                // Pause
+                await fetch('/api/pause?duration=3600');
             }
         }
+
+        async function startProcessing() {
+            await fetch('/api/start');
+        }
+
+        // SSE & Updates
+        const evtSource = new EventSource("/stream");
+        const queueArea = document.getElementById('queue-area');
+        const logWindow = document.getElementById('log-window');
+
+        let lastQueueIds = [];
+
+        evtSource.onmessage = function (event) {
+            const data = JSON.parse(event.data);
+
+            // Basics
+            document.getElementById('queue-count').textContent = data.queue_count;
+            document.getElementById('idle-timer').textContent = data.idle_seconds;
+            document.getElementById('current-index').textContent = data.current_index;
+
+            // Status Badge
+            const badge = document.getElementById('status-badge');
+            const pauseTime = data.paused_until || 0;
+            const now = Date.now() / 1000;
+
+            if (pauseTime > now) {
+                isPaused = true;
+                const minLeft = Math.ceil((pauseTime - now) / 60);
+                badge.className = 'badge paused';
+                badge.textContent = `PAUSED (${minLeft}m)`;
+
+                const pBtn = document.getElementById('pause-btn');
+                if (pBtn) {
+                    pBtn.textContent = "RESUME";
+                    pBtn.className = "pause-btn resume-btn";
+                    pBtn.style.backgroundColor = "var(--success-color)";
+                }
+            } else {
+                isPaused = false;
+                const pBtn = document.getElementById('pause-btn');
+                if (pBtn) {
+                    pBtn.textContent = "PAUSE 1H";
+                    pBtn.className = "pause-btn";
+                    pBtn.style.backgroundColor = "var(--amber-color)";
+                }
+
+                if (data.is_processing) {
+                    badge.className = 'badge processing';
+                    badge.textContent = `Processing: ${data.current_id}`;
+                } else {
+                    badge.className = 'badge idle';
+                    badge.textContent = 'Idle';
+                }
+            }
+
+            // Logs
+            if (data.logs && data.logs.length) {
+                logWindow.innerHTML = data.logs.map(l => `<div>${l}</div>`).join('');
+                logWindow.scrollTop = logWindow.scrollHeight;
+            }
+
+            // Queue List Update (Optimization: only if count changes or force reload occasionally could be better, but we'll simplistic diffing)
+            // Actually, for visual smoothness, let's fetch full queue occasionally or use a separate loop?
+            // SSE doesn't send the full queue list (too big). We need to fetch it separately.
+            // But we can trigger a fetch if queue_count changes significantly or we haven't in a while.
+            // For now, let's just refresh queue list every 5 seconds via separate interval if user is looking.
+        };
+
+        // Poll Queue List
+        setInterval(async () => {
+            try {
+                const res = await fetch('/api/queue');
+                const qData = await res.json();
+                const items = qData.items || [];
+
+                // Diff check to avoid DOM thrashing if identical? 
+                // Simple version: just rebuild
+                if (items.length === 0) {
+                    queueArea.innerHTML = '<div style="text-align: center; color: #94a3b8;">Queue empty</div>';
+                    return;
+                }
+
+                // We want to preserve existing elements if possible to keep images loaded
+                // But simple rebuilding is safer for correctness right now.
+
+                // Build HTML
+                let html = '';
+                for (const id of items) {
+                    // Check cache
+                    const meta = metaCache[id] || { name: '...', avatar: null };
+                    // If unknown, trigger fetch (async, won't block)
+                    if (meta.name === '...') fetchMeta(id);
+
+                    const activeClass = (document.getElementById('status-badge').textContent.includes(id)) ? 'active' : '';
+
+                    const avatarStyle = meta.avatar ? `background-image: url('${meta.avatar}')` : '';
+
+                    html += `
+                        <div class="queue-item ${activeClass}" id="q-item-${id}">
+                            <div class="q-avatar" style="${avatarStyle}"></div>
+                            <div class="q-info">
+                                <div class="q-name">${meta.name === '...' ? 'Loading...' : meta.name}</div>
+                                <div class="q-id">${id}</div>
+                            </div>
+                        </div>
+                    `;
+                }
+                queueArea.innerHTML = html;
+
+            } catch (e) { }
+        }, 3000);
+
     </script>
 </body>
 
