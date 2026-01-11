@@ -50,21 +50,12 @@ list_handler = ListHandler()
 list_handler.setFormatter(formatter)
 logger.addHandler(list_handler)
 
-def set_status(video_id, status_msg, progress=None, state="running", **kwargs):
-    current = STATUS["active_jobs"].get(video_id, {})
-    
-    update_data = {
+def set_status(video_id, status_msg, progress=0, state="running"):
+    STATUS["active_jobs"][video_id] = {
         "status": status_msg,
+        "progress": progress,
         "state": state
     }
-    if progress is not None:
-        update_data["progress"] = progress
-        
-    update_data.update(kwargs) # Merge extra fields like title, artist, source
-    
-    current.update(update_data)
-    STATUS["active_jobs"][video_id] = current
-    
     if state != "downloading": 
         logger.info(f"[{video_id}] {status_msg}")
 
@@ -423,9 +414,7 @@ async def process_video_async(video_id, metadata_override=None):
         if data:
             title = data.get('title', 'Unknown')
             author = data.get('author', 'Unknown')
-            title = data.get('title', 'Unknown')
-            author = data.get('author', 'Unknown')
-            set_status(video_id, f"Metadata: {title}", title=title, artist=author)
+            set_status(video_id, f"Metadata: {title}")
         else:
             set_status(video_id, "ERROR: No metadata found")
             logger.error(f"[{video_id}] No metadata available")
@@ -451,8 +440,6 @@ async def process_video_async(video_id, metadata_override=None):
         final_stream_url = jio_url
         best_audio['type'] = 'audio/mp4'
         source_used = "JioSaavn"
-
-        set_status(video_id, "Found Source: JioSaavn", source="JioSaavn")
         logger.info(f"[{video_id}] Source: JioSaavn")
     
     # Priority 2: Invidious (get raw URL, not proxied)
@@ -472,8 +459,6 @@ async def process_video_async(video_id, metadata_override=None):
                 if raw_url:
                     final_stream_url = raw_url
                     source_used = "Invidious"
-
-                    set_status(video_id, "Found Source: Invidious", source="Invidious")
                     logger.info(f"[{video_id}] Source: Invidious (Direct)")
 
     # Priority 3: Piped
@@ -488,8 +473,6 @@ async def process_video_async(video_id, metadata_override=None):
                 final_stream_url = best_stream.get('url')
                 if final_stream_url:
                     source_used = "Piped"
-
-                    set_status(video_id, "Found Source: Piped", source="Piped")
                     logger.info(f"[{video_id}] Source: Piped")
                     mime = best_stream.get('mimeType', '')
                     if 'mp4' in mime:
@@ -508,8 +491,6 @@ async def process_video_async(video_id, metadata_override=None):
         if z_url:
             final_stream_url = z_url
             source_used = "Zeabur"
-
-            set_status(video_id, "Found Source: Zeabur", source="Zeabur")
             logger.info(f"[{video_id}] Source: Zeabur API")
             if z_data:
                 ext = z_data.get('ext', 'm4a')
@@ -530,8 +511,6 @@ async def process_video_async(video_id, metadata_override=None):
                 final_stream_url = r_audio[0].get('url')
                 best_audio = r_audio[0]
                 source_used = "RapidAPI"
-
-                set_status(video_id, "Found Source: RapidAPI", source="RapidAPI")
                 logger.info(f"[{video_id}] Source: RapidAPI")
 
     if source_used:
@@ -552,8 +531,7 @@ async def process_video_async(video_id, metadata_override=None):
     filepath = os.path.join(download_dir, filename)
     
     logger.info(f"[{video_id}] Filename: {filename} (Title: {title} - {author})")
-
-    set_status(video_id, f"Downloading...", title=title, artist=author) # Ensure title is set if not already
+    set_status(video_id, f"Downloading...")
     
     try:
         # Prepare headers similar to the attached file example
@@ -579,7 +557,16 @@ async def process_video_async(video_id, metadata_override=None):
         
         # Handle 403 with RapidAPI fallback
         if response.status_code == 403:
-            logger.warning(f"[{video_id}] 403 error, trying RapidAPI...")
+            logger.warning(f"[{video_id}] 403 error, trying Zeabur...")
+            z_url, z_data = fetch_zeabur_audio(video_id)
+            if z_url:
+                 final_stream_url = z_url
+                 logger.info(f"[{video_id}] Fallback Source: Zeabur")
+                 response = requests.get(final_stream_url, headers=headers, stream=True, timeout=60)
+
+        # Fallback to RapidAPI if Zeabur failed or wasn't found
+        if response.status_code == 403 or response.status_code != 200:
+            logger.warning(f"[{video_id}] Still failing, trying RapidAPI...")
             rapid_data = fetch_details_rapidapi(video_id)
             if rapid_data:
                 r_adaptive = rapid_data.get('adaptiveFormats', [])
@@ -587,7 +574,7 @@ async def process_video_async(video_id, metadata_override=None):
                 if r_audio:
                     r_audio.sort(key=lambda x: int(x.get('bitrate', 0)), reverse=True)
                     final_stream_url = r_audio[0].get('url')
-                    response = requests.get(final_stream_url, headers=headers, stream=True, timeout=5)
+                    response = requests.get(final_stream_url, headers=headers, stream=True, timeout=60)
         
         if response.status_code != 200:
             logger.error(f"[{video_id}] HTTP {response.status_code}: {response.text[:500]}")
@@ -598,9 +585,7 @@ async def process_video_async(video_id, metadata_override=None):
         response.raise_for_status()
         
         total_size = int(response.headers.get('content-length', 0))
-        total_size = int(response.headers.get('content-length', 0))
         downloaded = 0
-        set_status(video_id, "Starting Download...", total_size=total_size)
         
         # Download with 1MB chunks like in the attached file
         with open(filepath, 'wb') as f:
