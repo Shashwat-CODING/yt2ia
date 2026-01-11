@@ -24,7 +24,6 @@ STATUS = {
     }
 }
 
-# Custom Handler to write to STATUS["logs"]
 class ListHandler(logging.Handler):
     def emit(self, record):
         msg = self.format(record)
@@ -32,20 +31,15 @@ class ListHandler(logging.Handler):
         if len(STATUS["logs"]) > 100:
             STATUS["logs"].pop(0)
 
-# Setup Logger
 logger = logging.getLogger("yt2ia")
 logger.setLevel(logging.INFO)
-
 formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
-
 file_handler = logging.FileHandler("app.log")
 file_handler.setFormatter(formatter)
 logger.addHandler(file_handler)
-
 console_handler = logging.StreamHandler()
 console_handler.setFormatter(formatter)
 logger.addHandler(console_handler)
-
 list_handler = ListHandler()
 list_handler.setFormatter(formatter)
 logger.addHandler(list_handler)
@@ -63,6 +57,7 @@ def remove_status(video_id):
     if video_id in STATUS["active_jobs"]:
         del STATUS["active_jobs"][video_id]
 
+YTIFY_API_BASE = "https://ytify-backend.vercel.app/api"
 INVIDIOUS_INSTANCES = [
   "https://compilations.broquemonsieur.net",
   "https://invidious.frontendfriendly.xyz",
@@ -73,7 +68,6 @@ INVIDIOUS_INSTANCES = [
   "https://invidious.einfachzocken.eu",
   "https://invidious.tail5b365.ts.net",
   "https://invidious.hyperreal.coffee",
-  "https://vid.selbsthilfegruppe.wtf",
   "https://invidious.schenkel.eti.br",
   "https://invidious.nikkosphere.com",
   "https://invidious.projectsegfault",
@@ -88,7 +82,6 @@ INVIDIOUS_INSTANCES = [
   "https://invidious.materialio.us",
   "https://invidious.yourdevice.ch",
   "https://invidious.adminforge.de",
-  "https://sklempin.ddns.net:9001",
   "https://invidious.drgns.space",
   "https://invidious.no-logs.com",
   "https://invidious.neomode.net",
@@ -118,7 +111,6 @@ INVIDIOUS_INSTANCES = [
   "https://invidious.io.LOL",
   "https://yt.pwnwriter.xyz",
   "https://inv.perditum.com",
-  "https://abura53-test.com",
   "https://inv.clovius.club",
   "https://invidious.f5.si",
   "https://zerotube.p-e.kr",
@@ -216,7 +208,7 @@ PIPED_INSTANCES = [
   "https://pipedapi.orangenet.cc"
 ]
 
-YTIFY_API_BASE = "https://ytify-backend.vercel.app/api"
+# ---------- HELPER FUNCTIONS ----------
 
 async def fetch_from_instance(session, video_id, instance_url):
     try:
@@ -225,25 +217,21 @@ async def fetch_from_instance(session, video_id, instance_url):
             if response.status == 200:
                 data = await response.json()
                 return instance_url, data
-    except Exception as e:
-        logger.debug(f"Instance {instance_url} failed: {e}")
+    except Exception:
+        pass
     return None
 
 async def fetch_details_parallel(video_id):
     async with aiohttp.ClientSession() as session:
         tasks = [asyncio.create_task(fetch_from_instance(session, video_id, url)) 
                 for url in INVIDIOUS_INSTANCES]
-        
         for future in asyncio.as_completed(tasks):
             try:
                 result = await future
                 if result:
-                    for t in tasks:
-                        t.cancel()
+                    for t in tasks: t.cancel()
                     return result
-            except Exception:
-                pass
-                
+            except: pass
     return None, None
 
 async def fetch_from_piped(session, video_id, instance_url):
@@ -254,8 +242,7 @@ async def fetch_from_piped(session, video_id, instance_url):
                 data = await resp.json()
                 if data.get('audioStreams') or data.get('videoStreams'):
                     return data
-    except Exception as e:
-        logger.debug(f"Piped instance {instance_url} failed: {e}")
+    except: pass
     return None
 
 async def fetch_piped_parallel(video_id):
@@ -265,486 +252,300 @@ async def fetch_piped_parallel(video_id):
             result = await future
             if result:
                 return result
-        return None
-
-def parse_artists(artist_string):
-    """Parse artist string and extract individual artist names"""
-    if not artist_string:
-        return []
-    
-    # Common separators for multiple artists
-    separators = [', ', ' & ', ' and ', ' x ', ' X ', ' feat. ', ' feat ', ' ft. ', ' ft ', ' featuring ', ' Featuring ']
-    
-    artists = [artist_string]
-    for sep in separators:
-        new_artists = []
-        for a in artists:
-            new_artists.extend(a.split(sep))
-        artists = new_artists
-    
-    # Clean up each artist name
-    artists = [a.strip() for a in artists if a.strip()]
-    return artists
-
-def fetch_jiosaavn_url(title, artist):
-    try:
-        if not title or not artist:
-            return None
-        
-        # Use full title - don't strip parentheses content as it may be important
-        # (e.g., "Slowed Version", "Remix", etc.)
-        clean_title = title.strip()
-        
-        # Parse multiple artists and join with comma
-        artists_list = parse_artists(artist)
-        if not artists_list:
-            return None
-        
-        # Join artists with comma for API
-        artists_str = ','.join(artists_list)
-        
-        query_title = urllib.parse.quote(clean_title)
-        query_artist = urllib.parse.quote(artists_str)
-        
-        url = f"{YTIFY_API_BASE}/jiosaavn/search?title={query_title}&artist={query_artist}&debug=0"
-        logger.info(f"Searching JioSaavn: {clean_title} - {artists_str}")
-        logger.info(f"JioSaavn API Request: {url}")
-        
-        resp = requests.get(url, timeout=15)
-        if resp.status_code == 200:
-            data = resp.json()
-            if isinstance(data, dict) and data.get("downloadUrl"):
-                d_url = data.get("downloadUrl")
-                logger.info(f"Found JioSaavn URL")
-                return d_url
-    except Exception as e:
-        logger.warning(f"JioSaavn Search Failed: {e}")
     return None
-
-def fetch_zeabur_audio(video_id):
-    try:
-        url = f"https://hdtkfyf.zeabur.app/api/dl/{video_id}"
-        logger.info(f"[{video_id}] Checking Zeabur API: {url}")
-        # Takes time, so we allow a bit more timeout here as it's a specific fallback
-        resp = requests.get(url, timeout=15) 
-        if resp.status_code == 200:
-            data = resp.json()
-            if data and 'audio_formats' in data:
-                formats = data['audio_formats']
-                # Sort by filesize (descending) to get highest quality
-                formats.sort(key=lambda x: x.get('filesize', 0) or 0, reverse=True)
-                
-                if formats:
-                    best = formats[0]
-                    raw_url = best.get('url')
-                    if raw_url:
-                        encoded = urllib.parse.quote(raw_url)
-                        proxy_url = f"https://hdtkfyf.zeabur.app/api/proxy?url={encoded}"
-                        return proxy_url, best
-    except Exception as e:
-        logger.warning(f"[{video_id}] Zeabur API failed: {e}")
-    return None, None
 
 def fetch_details_rapidapi(video_id):
     url = "https://yt-api.p.rapidapi.com/dl"
-    querystring = {"id": video_id, "cgeo": "US"}
     headers = {
         "x-rapidapi-key": "eee55a9833msh8f2dbd8e2b7970bp194fefjsn646e78",
         "x-rapidapi-host": "yt-api.p.rapidapi.com"
     }
     try:
-        logger.info(f"Attempting RapidAPI for {video_id}")
-        response = requests.get(url, headers=headers, params=querystring, timeout=15)
+        response = requests.get(url, headers=headers, params={"id": video_id, "cgeo": "US"}, timeout=15)
         if response.status_code == 200:
-            data = response.json()
-            data['author'] = data.get('channelTitle', 'Unknown')
-            
-            if 'adaptiveFormats' in data:
-                for f in data['adaptiveFormats']:
-                    if 'mimeType' in f:
-                        f['type'] = f['mimeType']
-                        
-            return data
-    except Exception as e:
-        logger.error(f"RapidAPI error: {e}")
+            return response.json()
+    except: pass
     return None
 
-def sanitize_name(name):
-    # Remove invalid filename characters, replace spaces with underscores
-    name = re.sub(r'[<>:"/\\|?*]', '', name)
-    name = name.replace(" ", "_")
-    name = re.sub(r'_+', '_', name)  # Remove multiple underscores
-    name = name.strip('_')  # Remove leading/trailing underscores
-    return name[:200]  # Limit length
+# ---------- SOURCE FINDERS ----------
+
+def parse_artists(artist_string):
+    if not artist_string: return []
+    separators = [', ', ' & ', ' and ', ' x ', ' X ', ' feat. ', ' feat ', ' ft. ', ' ft ', ' featuring ', ' Featuring ']
+    artists = [artist_string]
+    for sep in separators:
+        new_ar = []
+        for a in artists: new_ar.extend(a.split(sep))
+        artists = new_ar
+    return [a.strip() for a in artists if a.strip()]
+
+def find_jiosaavn(title, artist):
+    if not title or not artist: return None, None
+    try:
+        # Simple clean info
+        artist = parse_artists(artist)
+        if not artist: return None, None
+        
+        q_title = urllib.parse.quote(title.strip())
+        q_artist = urllib.parse.quote(','.join(artist))
+        url = f"{YTIFY_API_BASE}/jiosaavn/search?title={q_title}&artist={q_artist}&debug=0"
+        
+        resp = requests.get(url, timeout=15)
+        if resp.status_code == 200:
+            d = resp.json()
+            if d and d.get("downloadUrl"):
+                return d.get("downloadUrl"), {'type': 'audio/mp4'}
+    except: pass
+    return None, None
+
+async def find_invidious(video_id, current_metadata=None):
+    # If we already have metadata from somewhere, good. But we need an instance to proxy.
+    # So we always fetch
+    instance, data = await fetch_details_parallel(video_id)
+    if not data: return None, None, None
+
+    # Metadata extraction
+    meta = {
+        'title': data.get('title', 'Unknown'),
+        'artist': data.get('author', 'Unknown')
+    }
+    if meta['artist'].endswith(" - Topic"): meta['artist'] = meta['artist'].replace(" - Topic", "")
+
+    # Format
+    adaptive = data.get('adaptiveFormats', [])
+    audio = [f for f in adaptive if f.get('type', '').startswith('audio')]
+    if not audio: return None, None, meta
+
+    audio.sort(key=lambda x: int(x.get('bitrate', 0)), reverse=True)
+    best = audio[0]
+    raw_url = best.get('url')
+    
+    if raw_url:
+        # PROXY via Instance
+        # Standard Invidious proxy: {instance}/videoplayback?{query}
+        try:
+            parsed = urllib.parse.urlparse(raw_url)
+            proxy_url = f"{instance}/videoplayback?{parsed.query}"
+            return proxy_url, best, meta
+        except:
+             return raw_url, best, meta # Fallback to raw
+
+    return None, None, meta
+
+async def find_piped(video_id):
+    data = await fetch_piped_parallel(video_id)
+    if not data: return None, None
+    
+    streams = data.get('audioStreams', [])
+    if not streams: return None, None
+    
+    streams.sort(key=lambda x: int(x.get('bitrate', 0)), reverse=True)
+    best = streams[0]
+    return best.get('url'), {'type': best.get('mimeType', 'audio/mp4')}
+
+def find_zeabur(video_id):
+    try:
+        url = f"https://hdtkfyf.zeabur.app/api/dl/{video_id}"
+        resp = requests.get(url, timeout=20)
+        if resp.status_code == 200:
+            data = resp.json()
+            formats = data.get('audio_formats', [])
+            formats.sort(key=lambda x: x.get('filesize', 0) or 0, reverse=True)
+            if formats:
+                best = formats[0]
+                raw = best.get('url')
+                if raw:
+                    enc = urllib.parse.quote(raw)
+                    return f"{enc}", best
+    except: pass
+    return None, None
+
+def find_rapidapi(video_id):
+    data = fetch_details_rapidapi(video_id)
+    if not data: return None, None, None
+    
+    meta = {
+        'title': data.get('title', 'Unknown'),
+        'artist': data.get('channelTitle', 'Unknown')
+    }
+    adaptive = data.get('adaptiveFormats', [])
+    audio = [f for f in adaptive if f.get('type', '').startswith('audio')]
+    if audio:
+        audio.sort(key=lambda x: int(x.get('bitrate', 0)), reverse=True)
+        return audio[0].get('url'), audio[0], meta
+    return None, None, meta
+
+# ---------- MAIN PROCESSING ----------
+
+async def process_video_async(video_id, metadata_override=None):
+    title = metadata_override.get('title', 'Unknown') if metadata_override else "Unknown"
+    author = metadata_override.get('artist', 'Unknown') if metadata_override else "Unknown"
+    
+    # 1. Resolve Metadata if missing
+    if title == "Unknown":
+        set_status(video_id, "Resolving Metadata...")
+        # Brief check just for title/author
+        _, i_data = await fetch_details_parallel(video_id)
+        if i_data:
+            title = i_data.get('title', 'Unknown')
+            author = i_data.get('author', 'Unknown')
+        else:
+             r_data = fetch_details_rapidapi(video_id)
+             if r_data:
+                 title = r_data.get('title', 'Unknown')
+                 author = r_data.get('channelTitle', 'Unknown')
+        
+        if author.endswith(" - Topic"): author = author.replace(" - Topic", "")
+    
+    logger.info(f"[{video_id}] Metadata: {title} - {author}")
+
+    # 2. Try Download Chain
+    # We define a list of steps. Each step returns (url, format_info) or None
+    # If download fails, we continue loop.
+    
+    success_file = None
+    
+    # Define steps
+    # Each step: name, async_func -> (url, format_data)
+    
+    # We wrap synchronous calls in async wrappers for uniformity
+    async def step_jio(): return find_jiosaavn(title, author)
+    async def step_inv(): 
+        u, f, _ = await find_invidious(video_id)
+        return u, f
+    async def step_piped(): return await find_piped(video_id)
+    async def step_zeabur(): return find_zeabur(video_id) # Sync but fast enough or threads
+    async def step_rapid():
+        u, f, _ = find_rapidapi(video_id)
+        return u, f
+
+    steps = [
+        ("JioSaavn", step_jio),
+        ("Invidious", step_inv),
+        ("Piped", step_piped),
+        ("Zeabur", step_zeabur),
+        ("RapidAPI", step_rapid)
+    ]
+    
+    headers = {
+        "User-Agent": "Mozilla/5.0",
+        "Referer": "https://www.youtube.com/"
+    }
+
+    for name, func in steps:
+        set_status(video_id, f"Checking {name}...")
+        logger.info(f"[{video_id}] Trying {name}")
+        
+        try:
+            url, fmt = await func()
+        except:
+            url, fmt = None, None
+            
+        if not url:
+            logger.info(f"[{video_id}] {name} found no URL")
+            continue
+            
+        # Try Download
+        try:
+            # Filename logic
+            ext = "webm"
+            if fmt:
+                mime = fmt.get('type', '') or fmt.get('mimeType', '')
+                if 'mp4' in mime or 'm4a' in mime: ext = "m4a"
+            
+            fname = f"{video_id}.{ext}"
+            fpath = os.path.join(os.path.dirname(os.path.abspath(__file__)), fname)
+            
+            logger.info(f"[{video_id}] Downloading from {name}: {url}")
+            
+            # Stream download
+            with requests.get(url, headers=headers, stream=True, timeout=20) as r:
+                if r.status_code != 200:
+                    logger.warning(f"[{video_id}] {name} download failed: {r.status_code}")
+                    continue # Try next source on HTTP error
+                
+                total = int(r.headers.get('content-length', 0))
+                dl = 0
+                with open(fpath, 'wb') as f:
+                    for chunk in r.iter_content(1024*1024):
+                        if chunk:
+                            f.write(chunk)
+                            dl += len(chunk)
+                            if total:
+                                pct = int(dl/total * 100)
+                                set_status(video_id, f"Downloading ({name}): {pct}%", progress=pct, state="downloading")
+            
+            # If we get here, download finished
+            logger.info(f"[{video_id}] Download success from {name}")
+            success_file = fpath
+            break # Exit loop
+            
+        except Exception as e:
+            logger.warning(f"[{video_id}] {name} download exception: {e}")
+            if os.path.exists(fpath): os.remove(fpath)
+            continue # Try next source
+            
+    if not success_file:
+         set_status(video_id, "ERROR: All sources failed")
+         remove_status(video_id)
+         return
+
+    # 3. Upload
+    set_status(video_id, "Uploading...")
+    try:
+        identifier = "YTMBACKUP"
+        md = {'title': title, 'creator': author, 'mediatype': 'audio', 'collection': 'opensource_audio'}
+        r = upload(identifier, files={os.path.basename(success_file): success_file}, metadata=md, access_key=IA_ACCESS_KEY, secret_key=IA_SECRET_KEY)
+        
+        if r and r[0].status_code == 200:
+            ia_url = f"https://archive.org/download/{identifier}/{os.path.basename(success_file)}"
+            save_entry(f"{title} - {author}", ia_url)
+            STATUS["stats"]["processed"] += 1
+            logger.info(f"[{video_id}] Upload Complete")
+        else:
+             logger.error(f"[{video_id}] Upload failed")
+             
+    except Exception as e:
+        logger.error(f"[{video_id}] Upload error: {e}")
+    
+    if os.path.exists(success_file): os.remove(success_file)
+    remove_status(video_id)
 
 def process_video_task(video_id, metadata_override=None):
-    if video_id in STATUS["active_jobs"]:
-        return
-        
-    set_status(video_id, "Queued / Starting")
-    logger.info(f"Starting processing for video: {video_id}")
+    if video_id in STATUS["active_jobs"]: return
+    set_status(video_id, "Starting...")
     try:
         loop = asyncio.new_event_loop()
         asyncio.set_event_loop(loop)
         loop.run_until_complete(process_video_async(video_id, metadata_override))
         loop.close()
     except Exception as e:
-        set_status(video_id, f"Error: {str(e)}")
-        logger.error(f"Error processing {video_id}: {e}", exc_info=True)
-
-async def process_video_async(video_id, metadata_override=None):
-    instance = None
-    data = None
-    title = "Unknown"
-    author = "Unknown"
-    
-    if metadata_override:
-        title = metadata_override.get('title', 'Unknown')
-        author = metadata_override.get('artist', 'Unknown')
-        logger.info(f"[{video_id}] Metadata provided: {title} - {author}")
-    else:
-        set_status(video_id, "Resolving Metadata...")
-        instance, data = await fetch_details_parallel(video_id)
-        
-        if not data:
-            set_status(video_id, "Trying RapidAPI for metadata...")
-            data = fetch_details_rapidapi(video_id)
-            instance = "RAPIDAPI"
-            
-        if data:
-            title = data.get('title', 'Unknown')
-            author = data.get('author', 'Unknown')
-            set_status(video_id, f"Metadata: {title}")
-        else:
-            set_status(video_id, "ERROR: No metadata found")
-            logger.error(f"[{video_id}] No metadata available")
-            remove_status(video_id)
-            return
-
-    if author and " - Topic" in author:
-        author = author.replace(" - Topic", "")
-
-    final_stream_url = None
-    best_audio = {}
-    source_used = None
-
-    set_status(video_id, "Finding stream source...")
-
-    # Priority 1: JioSaavn (best quality for Indian music)
-    set_status(video_id, "Checking JioSaavn...")
-    jio_url = None
-    if title and author and author != "Unknown":
-        jio_url = fetch_jiosaavn_url(title, author)
-    
-    if jio_url:
-        final_stream_url = jio_url
-        best_audio['type'] = 'audio/mp4'
-        source_used = "JioSaavn"
-        logger.info(f"[{video_id}] Source: JioSaavn")
-    
-    # Priority 2: Invidious (get raw URL, not proxied)
-    if not final_stream_url:
-        set_status(video_id, "Checking Invidious...")
-        if not data:
-            instance, data = await fetch_details_parallel(video_id)
-        
-        if data and data.get('adaptiveFormats'):
-            adaptive_formats = data.get('adaptiveFormats', [])
-            audio_formats = [f for f in adaptive_formats if f.get('type', '').startswith('audio')]
-            if audio_formats:
-                audio_formats.sort(key=lambda x: int(x.get('bitrate', 0)), reverse=True)
-                best_audio = audio_formats[0]
-                raw_url = best_audio.get('url')
-                
-                if raw_url:
-                    final_stream_url = raw_url
-                    source_used = "Invidious"
-                    logger.info(f"[{video_id}] Source: Invidious (Direct)")
-
-    # Priority 3: Piped
-    if not final_stream_url:
-        set_status(video_id, "Checking Piped...")
-        piped_data = await fetch_piped_parallel(video_id)
-        if piped_data:
-            p_streams = piped_data.get('audioStreams', [])
-            if p_streams:
-                p_streams.sort(key=lambda x: int(x.get('bitrate', 0)), reverse=True)
-                best_stream = p_streams[0]
-                final_stream_url = best_stream.get('url')
-                if final_stream_url:
-                    source_used = "Piped"
-                    logger.info(f"[{video_id}] Source: Piped")
-                    mime = best_stream.get('mimeType', '')
-                    if 'mp4' in mime:
-                        best_audio['type'] = 'audio/mp4'
-                    elif 'webm' in mime or 'opus' in best_stream.get('codec', ''):
-                        best_audio['type'] = 'audio/webm; codecs="opus"'
-                    else:
-                        best_audio['type'] = mime
-
-
-
-    # Priority 4: Zeabur API
-    if not final_stream_url:
-        set_status(video_id, "Checking Zeabur API...")
-        z_url, z_data = fetch_zeabur_audio(video_id)
-        if z_url:
-            final_stream_url = z_url
-            source_used = "Zeabur"
-            logger.info(f"[{video_id}] Source: Zeabur API")
-            if z_data:
-                ext = z_data.get('ext', 'm4a')
-                if ext == 'webm':
-                     best_audio['type'] = 'audio/webm; codecs="opus"'
-                else:
-                     best_audio['type'] = 'audio/mp4'
-
-    # Priority 5: RapidAPI (fallback)
-    if not final_stream_url:
-        set_status(video_id, "Checking RapidAPI...")
-        rapid_data = fetch_details_rapidapi(video_id)
-        if rapid_data:
-            r_adaptive = rapid_data.get('adaptiveFormats', [])
-            r_audio = [f for f in r_adaptive if f.get('type', '').startswith('audio')]
-            if r_audio:
-                r_audio.sort(key=lambda x: int(x.get('bitrate', 0)), reverse=True)
-                final_stream_url = r_audio[0].get('url')
-                best_audio = r_audio[0]
-                source_used = "RapidAPI"
-                logger.info(f"[{video_id}] Source: RapidAPI")
-
-    if source_used:
-        set_status(video_id, f"Source: {source_used}")
-
-    if not final_stream_url:
-        set_status(video_id, "ERROR: No stream source available")
-        logger.error(f"[{video_id}] All sources exhausted")
+        logger.error(f"Task error: {e}")
         remove_status(video_id)
-        return
 
-    # Use video_id as filename to ensure uniqueness
-    extension = "webm" if "opus" in best_audio.get('type', '') else "m4a"
-    filename = f"{video_id}.{extension}"
-    
-    # Use absolute path for file operations
-    download_dir = os.path.dirname(os.path.abspath(__file__))
-    filepath = os.path.join(download_dir, filename)
-    
-    logger.info(f"[{video_id}] Filename: {filename} (Title: {title} - {author})")
-    set_status(video_id, f"Downloading...")
-    
+# Helper for other types (Artist/Playlist) - mostly same as before
+def process_artist_task(aid):
     try:
-        # Prepare headers similar to the attached file example
-        headers = {
-            "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36",
-            "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
-            "Accept-Language": "en-GB,en-US;q=0.9,en;q=0.8",
-            "Accept-Encoding": "gzip, deflate, br",
-            "Upgrade-Insecure-Requests": "1",
-            "Sec-Fetch-Dest": "document",
-            "Sec-Fetch-Mode": "navigate",
-            "Sec-Fetch-Site": "none",
-            "Sec-Fetch-User": "?1",
-        }
-        
-        # Add referer for certain domains
-        if "echostreamz.com" in final_stream_url or "googlevideo.com" in final_stream_url:
-            headers["Referer"] = "https://www.youtube.com/"
-        
-        # Download audio with proper headers and streaming
-        logger.info(f"[{video_id}] Starting download from {source_used}")
-        response = requests.get(final_stream_url, headers=headers, stream=True, timeout=10)
-        
-        # Handle 403 with RapidAPI fallback
-        if response.status_code == 403:
-            logger.warning(f"[{video_id}] 403 error, trying Zeabur...")
-            z_url, z_data = fetch_zeabur_audio(video_id)
-            if z_url:
-                 final_stream_url = z_url
-                 logger.info(f"[{video_id}] Fallback Source: Zeabur")
-                 response = requests.get(final_stream_url, headers=headers, stream=True, timeout=60)
+        r = requests.get(f"{YTIFY_API_BASE}/artist/{aid}", timeout=10)
+        if r.status_code==200:
+            pid = r.json().get('playlistId')
+            if pid: process_playlist_task(pid)
+    except: pass
 
-        # Fallback to RapidAPI if Zeabur failed or wasn't found
-        if response.status_code == 403 or response.status_code != 200:
-            logger.warning(f"[{video_id}] Still failing, trying RapidAPI...")
-            rapid_data = fetch_details_rapidapi(video_id)
-            if rapid_data:
-                r_adaptive = rapid_data.get('adaptiveFormats', [])
-                r_audio = [f for f in r_adaptive if f.get('type', '').startswith('audio')]
-                if r_audio:
-                    r_audio.sort(key=lambda x: int(x.get('bitrate', 0)), reverse=True)
-                    final_stream_url = r_audio[0].get('url')
-                    response = requests.get(final_stream_url, headers=headers, stream=True, timeout=60)
-        
-        if response.status_code != 200:
-            logger.error(f"[{video_id}] HTTP {response.status_code}: {response.text[:500]}")
-            set_status(video_id, f"ERROR: HTTP {response.status_code}")
-            remove_status(video_id)
-            return
-        
-        response.raise_for_status()
-        
-        total_size = int(response.headers.get('content-length', 0))
-        downloaded = 0
-        
-        # Download with 1MB chunks like in the attached file
-        with open(filepath, 'wb') as f:
-            for chunk in response.iter_content(chunk_size=1024 * 1024):  # 1MB chunks
-                if chunk:
-                    f.write(chunk)
-                    downloaded += len(chunk)
-                    if total_size > 0:
-                        percent = int((downloaded / total_size) * 100)
-                        set_status(video_id, f"Downloading: {percent}%", progress=percent, state="downloading")
-        
-        logger.info(f"[{video_id}] Download complete ✅")
-        set_status(video_id, "Uploading to Archive.org...", progress=100, state="processing")
-        
-        identifier = "YTMBACKUP"
-        md = {
-            'title': title,
-            'creator': author,
-            'mediatype': 'audio',
-            'collection': 'opensource_audio'
-        }
-        
-        logger.info(f"[{video_id}] Uploading to IA: {identifier}")
-        
-        # Retry logic for upload (handle connection refused/busy)
-        max_retries = 10
-        base_delay = 5  # Start with 5s delay
-        
-        for attempt in range(max_retries):
-            try:
-                r_ia = upload(
-                    identifier, 
-                    files={filename: filepath},  # key is remote name, value is local path
-                    metadata=md, 
-                    access_key=IA_ACCESS_KEY,
-                    secret_key=IA_SECRET_KEY,
-                    verbose=True
-                )
-                
-                if r_ia and len(r_ia) > 0 and r_ia[0].status_code == 200:
-                    logger.info(f"[{video_id}] Upload success")
-                    ia_download_url = f"https://archive.org/download/{identifier}/{filename}"
-                    # Save with song name format: "title - artist1, artist2"
-                    song_name = f"{title} - {author}"
-                    save_entry(song_name, ia_download_url)
-                    STATUS["stats"]["processed"] += 1
-                    remove_status(video_id)
-                    break
-                else:
-                    raise Exception(f"Upload returned status {r_ia[0].status_code if r_ia else 'unknown'}")
-                    
-            except Exception as e:
-                if attempt < max_retries - 1:
-                    wait = base_delay * (attempt + 1) + (time.time() % 5)  # Add jitter
-                    logger.warning(f"[{video_id}] Upload attempt {attempt+1} failed ({str(e)}). Retrying in {wait:.1f}s...")
-                    set_status(video_id, f"Upload retry {attempt+1}/{max_retries}...", state="processing")
-                    time.sleep(wait)
-                else:
-                    set_status(video_id, "ERROR: Upload failed after retries")
-                    logger.error(f"[{video_id}] Upload failed: {e}")
-                    remove_status(video_id)
-        
-        # Cleanup downloaded file
-        if os.path.exists(filepath):
-            os.remove(filepath)
-            logger.info(f"[{video_id}] Cleaned up temporary file")
-            
-    except Exception as e:
-        set_status(video_id, f"ERROR: {str(e)}")
-        logger.error(f"[{video_id}] Processing error: {e}", exc_info=True)
-        remove_status(video_id)
-        if os.path.exists(filepath):
-            os.remove(filepath)
-
-def process_artist_task(artist_id):
+def process_playlist_task(pid):
     try:
-        logger.info(f"Fetching Artist: {artist_id}")
-        url = f"{YTIFY_API_BASE}/artist/{artist_id}"
-        resp = requests.get(url, timeout=15)
-        if resp.status_code != 200:
-            logger.error(f"Failed to fetch artist {artist_id}: {resp.status_code}")
-            return
-        
-        data = resp.json()
-        playlist_id = data.get('playlistId')
-        
-        if playlist_id:
-            logger.info(f"Artist {artist_id} -> Playlist {playlist_id}")
-            process_playlist_task(playlist_id)
-        else:
-            logger.warning(f"No playlist for artist {artist_id}")
+        r = requests.get(f"{YTIFY_API_BASE}/playlist/{pid}", timeout=10)
+        if r.status_code==200:
+            tracks = r.json().get('tracks', [])
+            existing = get_all_video_ids()
+            for t in tracks:
+                vid = t.get('videoId')
+                if vid and vid not in existing:
+                    STATUS["queue"].append({"id": vid, "title": t.get('title')})
+                    process_video_task(vid, {'title': t.get('title'), 'artist': t.get('artist') or t.get('author')})
+    except: pass
 
-    except Exception as e:
-        logger.error(f"Error artist {artist_id}: {e}", exc_info=True)
-
-def process_playlist_task(playlist_id):
-    try:
-        logger.info(f"Fetching Playlist: {playlist_id}")
-        url = f"{YTIFY_API_BASE}/playlist/{playlist_id}"
-        resp = requests.get(url, timeout=15)
-        if resp.status_code != 200:
-            logger.error(f"Failed to fetch playlist {playlist_id}: {resp.status_code}")
-            return
-        
-        data = resp.json()
-        tracks = data.get('tracks', [])
-        
-        logger.info(f"Found {len(tracks)} tracks in {playlist_id}")
-        
-        existing_ids = get_all_video_ids()
-        logger.info(f"Loaded {len(existing_ids)} existing IDs from DB")
-        
-        valid_tracks = []
-        for track in tracks:
-            vid = track.get('videoId')
-            if vid and vid not in existing_ids:
-                artist = track.get('artist') or track.get('author')
-                if not artist:
-                    logger.info(f"Skipping {vid}: No artist metadata")
-                    STATUS["stats"]["skipped"] += 1
-                    continue
-                    
-                valid_tracks.append(track)
-            elif vid:
-                logger.info(f"Skipping {vid}: Already archived")
-                STATUS["stats"]["skipped"] += 1
-
-        logger.info(f"Queueing {len(valid_tracks)} valid tracks")
-        
-        for t in valid_tracks:
-            STATUS["queue"].append({
-                "id": t.get('videoId'),
-                "title": t.get('title', 'Unknown')
-            })
-
-        for track in valid_tracks:
-            vid = track.get('videoId')
-            STATUS["queue"] = [q for q in STATUS["queue"] if q["id"] != vid]
-            
-            meta = {
-                'title': track.get('title'),
-                'artist': track.get('artist') or track.get('author') 
-            }
-            process_video_task(vid, metadata_override=meta)
-                
-    except Exception as e:
-        logger.error(f"Error playlist {playlist_id}: {e}", exc_info=True)
-
-def handle_submission(input_id):
-    if len(input_id) == 11:
-        logger.warning(f"Direct video ID not supported: {input_id}")
-        return
-        
-    elif input_id.startswith("UC"):
-        process_artist_task(input_id)
-    elif input_id.startswith("PL") or input_id.startswith("OLAK") or input_id.startswith("VLR"):
-        process_playlist_task(input_id)
-    else:
-        if len(input_id) > 11:
-            process_artist_task(input_id)
-        else:
-            logger.warning(f"Unknown ID format: {input_id}")
+def handle_submission(inp):
+    if len(inp) == 11 and not inp.startswith("UC"): process_video_task(inp)
+    elif inp.startswith("UC"): process_artist_task(inp)
+    else: process_playlist_task(inp)
