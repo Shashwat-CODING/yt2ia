@@ -11,8 +11,8 @@ import logging
 from datetime import datetime, timedelta
 
 # S3 Config
-IA_ACCESS_KEY = "cCYXD3V4ke4YkXLI"
-IA_SECRET_KEY = "qZHSAtgw5TJXkpZa"
+IA_ACCESS_KEY = "Mz5OJkBcN51Y2hWD"
+IA_SECRET_KEY = "VB4ILUzuJP5B2iCX"
 
 # Rate Limiting Configuration
 UPLOAD_DELAY = 15  # seconds between uploads
