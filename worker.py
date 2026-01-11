@@ -10,8 +10,8 @@ import re
 import logging
 
 # S3 Config
-IA_ACCESS_KEY = "YXzY5OrREXLL6XBh"
-IA_SECRET_KEY = "m2XnL3X7xCB1pNGE"
+IA_ACCESS_KEY = "cCYXD3V4ke4YkXLI"
+IA_SECRET_KEY = "qZHSAtgw5TJXkpZa"
 
 # Status Tracking Structure
 STATUS = {
