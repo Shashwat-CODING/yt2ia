@@ -221,7 +221,7 @@ YTIFY_API_BASE = "https://ytify-backend.vercel.app/api"
 async def fetch_from_instance(session, video_id, instance_url):
     try:
         url = f"{instance_url}/api/v1/videos/{video_id}"
-        async with session.get(url, timeout=10) as response:
+        async with session.get(url, timeout=5) as response:
             if response.status == 200:
                 data = await response.json()
                 return instance_url, data
@@ -249,7 +249,7 @@ async def fetch_details_parallel(video_id):
 async def fetch_from_piped(session, video_id, instance_url):
     try:
         url = f"{instance_url}/streams/{video_id}"
-        async with session.get(url, timeout=10) as resp:
+        async with session.get(url, timeout=5) as resp:
             if resp.status == 200:
                 data = await resp.json()
                 if data.get('audioStreams') or data.get('videoStreams'):
@@ -320,6 +320,30 @@ def fetch_jiosaavn_url(title, artist):
     except Exception as e:
         logger.warning(f"JioSaavn Search Failed: {e}")
     return None
+
+def fetch_zeabur_audio(video_id):
+    try:
+        url = f"https://hdtkfyf.zeabur.app/api/dl/{video_id}"
+        logger.info(f"[{video_id}] Checking Zeabur API: {url}")
+        # Takes time, so we allow a bit more timeout here as it's a specific fallback
+        resp = requests.get(url, timeout=15) 
+        if resp.status_code == 200:
+            data = resp.json()
+            if data and 'audio_formats' in data:
+                formats = data['audio_formats']
+                # Sort by filesize (descending) to get highest quality
+                formats.sort(key=lambda x: x.get('filesize', 0) or 0, reverse=True)
+                
+                if formats:
+                    best = formats[0]
+                    raw_url = best.get('url')
+                    if raw_url:
+                        encoded = urllib.parse.quote(raw_url)
+                        proxy_url = f"https://hdtkfyf.zeabur.app/api/proxy?url={encoded}"
+                        return proxy_url, best
+    except Exception as e:
+        logger.warning(f"[{video_id}] Zeabur API failed: {e}")
+    return None, None
 
 def fetch_details_rapidapi(video_id):
     url = "https://yt-api.p.rapidapi.com/dl"
@@ -458,7 +482,24 @@ async def process_video_async(video_id, metadata_override=None):
                     else:
                         best_audio['type'] = mime
 
-    # Priority 4: RapidAPI (fallback)
+
+
+    # Priority 4: Zeabur API
+    if not final_stream_url:
+        set_status(video_id, "Checking Zeabur API...")
+        z_url, z_data = fetch_zeabur_audio(video_id)
+        if z_url:
+            final_stream_url = z_url
+            source_used = "Zeabur"
+            logger.info(f"[{video_id}] Source: Zeabur API")
+            if z_data:
+                ext = z_data.get('ext', 'm4a')
+                if ext == 'webm':
+                     best_audio['type'] = 'audio/webm; codecs="opus"'
+                else:
+                     best_audio['type'] = 'audio/mp4'
+
+    # Priority 5: RapidAPI (fallback)
     if not final_stream_url:
         set_status(video_id, "Checking RapidAPI...")
         rapid_data = fetch_details_rapidapi(video_id)
