@@ -89,6 +89,7 @@ def get_all_video_ids():
                 video_id = extract_video_id_from_url(row[0])
                 if video_id:
                     result.add(video_id)
+            print(f"DB Debug: Loaded {len(result)} IDs from {len(cursor.fetchall()) + len(result)} rows")
             return result
         except Error as e:
             print(f"Error fetching all IDs: {e}")

@@ -161,7 +161,7 @@ async def submit_artist(req: SubmitArtistRequest):
     if add_to_queue(req.browse_id):
         # If system was idle (1+ min) and not processing, start immediately
         idle_time = time.time() - last_activity_time
-        if idle_time >= 60 and not is_processing:
+        if idle_time >= 5 and not is_processing:
             trigger_processing()
         return {"message": "Added to queue", "id": req.browse_id}
     else:
@@ -177,7 +177,7 @@ async def submit_job(req: SubmitRequest):
     if add_to_queue(req.input_id):
         # If system was idle and not processing, start immediately
         idle_time = time.time() - last_activity_time
-        if idle_time >= 60 and not is_processing:
+        if idle_time >= 5 and not is_processing:
             trigger_processing()
         return {"message": "Added to queue", "id": req.input_id}
     else:
@@ -235,7 +235,7 @@ def queue_processor():
                 continue
 
             # Process if idle for 1+ min and not already processing
-            if idle_time >= 60 and not is_processing:
+            if idle_time >= 5 and not is_processing:
                 if get_queue_count() > 0:
                     process_one_item()
                     
