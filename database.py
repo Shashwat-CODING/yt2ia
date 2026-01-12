@@ -137,22 +137,3 @@ def clear_all_entries():
         finally:
             conn.close()
     return -1
-
-def check_video_exists(video_id):
-    """Check if a video ID already exists in the database"""
-    conn = get_connection()
-    if conn:
-        try:
-            cursor = conn.cursor()
-            # Search for the video ID in the ia_url column
-            # URLs are like https://archive.org/download/IDENTIFIER/video_id.ext
-            query = "SELECT 1 FROM yt2ia_records WHERE ia_url LIKE %s LIMIT 1"
-            cursor.execute(query, (f"%/{video_id}.%",))
-            result = cursor.fetchone()
-            return result is not None
-        except Error as e:
-            print(f"Error checking video existence: {e}")
-            return False
-        finally:
-            conn.close()
-    return False
