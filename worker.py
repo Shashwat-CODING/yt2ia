@@ -359,7 +359,7 @@ def find_zeabur(video_id):
                 best = formats[0]
                 raw = best.get('url')
                 if raw:
-                    enc = urllib.parse.quote(raw)
+                    enc = (raw)
                     return f"{enc}", best
     except:
         pass
