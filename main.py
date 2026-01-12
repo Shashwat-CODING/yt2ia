@@ -9,7 +9,7 @@ import time
 import requests
 
 from database import init_db, get_all_entries, clear_all_entries
-from worker import handle_submission, STATUS
+from worker import handle_submission, STATUS, initialize_cache
 from queue_db import init_queue_db, add_to_queue, get_next_from_queue, remove_from_queue, get_all_queue, get_queue_count, clear_queue
 
 app = FastAPI()
@@ -191,6 +191,7 @@ templates = Jinja2Templates(directory=os.path.join(BASE_DIR, "templates"))
 def on_startup():
     init_db()
     init_queue_db()
+    initialize_cache()
     start_queue_processor()
     start_keep_alive()
 

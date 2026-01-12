@@ -21,11 +21,19 @@ STATUS = {
     "logs": [],
     "stats": {
         "processed": 0,
-        "skipped": 0
+        "skipped": 0,
+        "failed": 0
     }
 }
 
+VIDEO_ID_CACHE = set()
+
 last_upload_time = 0
+
+def initialize_cache():
+    global VIDEO_ID_CACHE
+    VIDEO_ID_CACHE = get_all_video_ids()
+    logger.info(f"Cache initialized with {len(VIDEO_ID_CACHE)} IDs")
 
 class ListHandler(logging.Handler):
     def emit(self, record):
@@ -359,8 +367,8 @@ def find_zeabur(video_id):
                 best = formats[0]
                 raw = best.get('url')
                 if raw:
-                    enc = (raw)
-                    return f"{enc}", best
+                    enc = urllib.parse.quote(raw)
+                    return f"https://hdtkfyf.zeabur.app/api/proxy?url={enc}", best
     except:
         pass
     return None, None
@@ -595,6 +603,7 @@ async def process_video_async(video_id, metadata_override=None):
         
         if success:
             save_entry(f"{title} - {author}", ia_url)
+            VIDEO_ID_CACHE.add(video_id)
             STATUS["stats"]["processed"] += 1
             logger.info(f"[{video_id}] Upload Complete: {ia_url}")
             set_status(video_id, "Complete!")
@@ -641,8 +650,10 @@ def process_playlist_task(pid, artist_id=None):
         r = requests.get(f"{YTIFY_API_BASE}/playlist/{pid}", timeout=10)
         if r.status_code==200:
             tracks = r.json().get('tracks', [])
-            existing = get_all_video_ids()
-            logger.info(f"Deduplication: Found {len(existing)} existing video IDs in DB")
+
+            # existing = get_all_video_ids()
+            existing = VIDEO_ID_CACHE
+            logger.info(f"Deduplication: Found {len(existing)} existing video IDs in Cache")
             for t in tracks:
                 vid = t.get('videoId')
                 if vid and vid not in existing:
