@@ -11,7 +11,6 @@ DB_CONFIG = {
     'port': 4000,
     'database': 'test',
     'database': 'test',
-    'raise_on_warnings': True,
     'pool_name': 'main_pool',
     'pool_size': 5
 }
