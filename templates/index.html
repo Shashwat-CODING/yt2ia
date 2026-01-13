@@ -3,563 +3,841 @@
 
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>YT2IA - Archiver</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>YT2IA // MISSION CONTROL</title>
     <style>
         :root {
-            --bg-color: #0f172a;
-            --card-bg: #1e293b;
-            --text-primary: #f8fafc;
-            --text-secondary: #94a3b8;
-            --accent-color: #3b82f6;
-            --accent-hover: #2563eb;
-            --danger-color: #ef4444;
-            --success-color: #22c55e;
-            --amber-color: #f59e0b;
+            /* Palette: Obsidian & Neon */
+            --bg-body: #050505;
+            --bg-panel: #0f0f0f;
+            --bg-header: #0a0a0a;
+            --border: #222;
+
+            --text-main: #e0e0e0;
+            --text-muted: #666;
+
+            --accent: #00f0ff;
+            /* Cyan */
+            --success: #00ff9d;
+            /* Matrix Green */
+            --warning: #ffb800;
+            --danger: #ff0055;
+
+            --font-ui: 'Inter', system-ui, -apple-system, sans-serif;
+            --font-mono: 'JetBrains Mono', 'Consolas', monospace;
+        }
+
+        * {
+            box-sizing: border-box;
         }
 
         body {
-            font-family: 'Inter', system-ui, sans-serif;
-            background-color: var(--bg-color);
-            color: var(--text-primary);
+            background-color: var(--bg-body);
+            color: var(--text-main);
+            font-family: var(--font-ui);
             margin: 0;
-            padding: 2rem;
-            line-height: 1.5;
-        }
-
-        .container {
-            max-width: 1200px;
-            margin: 0 auto;
-            display: grid;
-            grid-template-columns: 2fr 1fr;
-            gap: 2rem;
-        }
-
-        .card {
-            background-color: var(--card-bg);
-            border-radius: 1rem;
-            padding: 1.5rem;
-            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
-        }
-
-        h2 {
-            margin-top: 0;
-            border-bottom: 1px solid #334155;
-            padding-bottom: 1rem;
-            margin-bottom: 1.5rem;
-        }
-
-        /* Status Bar */
-        .status-bar {
-            grid-column: 1 / -1;
-            display: flex;
-            gap: 1rem;
-            margin-bottom: 1rem;
-            flex-wrap: wrap;
-        }
-
-        .badge {
-            padding: 0.5rem 1rem;
-            border-radius: 9999px;
-            font-weight: 600;
-            font-size: 0.875rem;
-            background-color: var(--card-bg);
-        }
-
-        .badge.processing {
-            background-color: var(--accent-color);
-            color: white;
-        }
-
-        .badge.idle {
-            background-color: var(--text-secondary);
-            color: #0f172a;
-        }
-
-        .badge.paused {
-            background-color: var(--amber-color);
-            color: #0f172a;
-        }
-
-        /* Search Section */
-        .search-box {
-            display: flex;
-            gap: 0.5rem;
-            margin-bottom: 1.5rem;
-        }
-
-        input,
-        select {
-            background-color: #334155;
-            border: 1px solid #475569;
-            color: white;
-            padding: 0.75rem;
-            border-radius: 0.5rem;
-            font-size: 1rem;
-        }
-
-        input {
-            flex: 1;
-        }
-
-        button {
-            background-color: var(--accent-color);
-            color: white;
-            border: none;
-            padding: 0.75rem 1.5rem;
-            border-radius: 0.5rem;
-            font-weight: 600;
-            cursor: pointer;
-            transition: background 0.2s;
-        }
-
-        button:hover {
-            background-color: var(--accent-hover);
-        }
-
-        .results {
+            height: 100vh;
             display: flex;
             flex-direction: column;
-            gap: 1rem;
-            max-height: 600px;
-            overflow-y: auto;
+            overflow: hidden;
+            /* Desktop default: body doesn't scroll, panels do */
         }
 
-        .result-item {
-            display: flex;
-            align-items: center;
-            gap: 1rem;
-            background-color: rgba(255, 255, 255, 0.05);
-            padding: 0.75rem;
-            border-radius: 0.5rem;
-        }
-
-        .result-img {
-            width: 60px;
+        /* --- Header --- */
+        header {
             height: 60px;
-            border-radius: 4px;
-            object-fit: cover;
-        }
-
-        .result-info {
-            flex: 1;
-        }
-
-        .result-title {
-            font-weight: 600;
-            font-size: 1.1rem;
-        }
-
-        .result-sub {
-            color: var(--text-secondary);
-            font-size: 0.9rem;
-        }
-
-        .add-btn {
-            background-color: var(--success-color);
-            padding: 0.5rem 1rem;
-            font-size: 0.875rem;
-        }
-
-        .add-btn.exists {
-            background-color: var(--amber-color);
-            cursor: not-allowed;
-        }
-
-        /* Sidebar / Queue */
-        .queue-list {
-            display: flex;
-            flex-direction: column;
-            gap: 0.75rem;
-            max-height: 500px;
-            overflow-y: auto;
-        }
-
-        .queue-item {
-            background-color: rgba(0, 0, 0, 0.2);
-            padding: 0.75rem;
-            border-radius: 0.5rem;
+            background: var(--bg-header);
+            border-bottom: 1px solid var(--border);
             display: flex;
             align-items: center;
-            gap: 0.75rem;
-            border-left: 3px solid transparent;
+            justify-content: space-between;
+            padding: 0 1.5rem;
+            flex-shrink: 0;
+            z-index: 10;
         }
 
-        .queue-item.active {
-            border-left-color: var(--accent-color);
-            background-color: rgba(59, 130, 246, 0.1);
+        .brand {
+            font-weight: 800;
+            letter-spacing: -0.5px;
+            font-size: 1.1rem;
+            display: flex;
+            align-items: center;
+            gap: 10px;
         }
 
-        .q-avatar {
-            width: 30px;
-            height: 30px;
+        .brand span {
+            color: var(--accent);
+        }
+
+        .brand-tag {
+            font-size: 0.6rem;
+            background: var(--border);
+            padding: 2px 6px;
+            border-radius: 4px;
+            color: #888;
+            display: inline-block;
+        }
+
+        .system-status {
+            display: flex;
+            gap: 1.5rem;
+            font-family: var(--font-mono);
+            font-size: 0.8rem;
+            text-align: right;
+        }
+
+        .status-item span {
+            color: var(--text-muted);
+            margin-right: 5px;
+        }
+
+        .status-val {
+            font-weight: bold;
+        }
+
+        .status-val.online {
+            color: var(--success);
+        }
+
+        .status-val.paused {
+            color: var(--warning);
+        }
+
+        /* --- Grid Layout --- */
+        .grid-container {
+            flex: 1;
+            display: grid;
+            /* Desktop: 3 Columns */
+            grid-template-columns: 280px 1fr 350px;
+            overflow: hidden;
+        }
+
+        /* --- Panel Components --- */
+        .panel {
+            border-right: 1px solid var(--border);
+            display: flex;
+            flex-direction: column;
+            background: var(--bg-panel);
+            overflow: hidden;
+            min-width: 0;
+            /* Prevents flex items from breaking grid */
+        }
+
+        .panel:last-child {
+            border-right: none;
+        }
+
+        .panel-head {
+            padding: 1rem;
+            border-bottom: 1px solid var(--border);
+            border-top: 1px solid var(--border);
+            /* Visual separator on mobile */
+            font-size: 0.75rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: var(--text-muted);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: rgba(255, 255, 255, 0.02);
+        }
+
+        .panel:first-child .panel-head:first-child {
+            border-top: none;
+        }
+
+        /* --- Column 1: Stats & Queue --- */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            padding: 1rem;
+            gap: 8px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .stat-card {
+            background: #000;
+            border: 1px solid var(--border);
+            border-radius: 4px;
+            padding: 10px 5px;
+            text-align: center;
+        }
+
+        .stat-num {
+            font-family: var(--font-mono);
+            font-size: 1.2rem;
+            font-weight: bold;
+            line-height: 1;
+            margin-bottom: 4px;
+        }
+
+        .stat-label {
+            font-size: 0.6rem;
+            color: var(--text-muted);
+            text-transform: uppercase;
+        }
+
+        .queue-list {
+            flex: 1;
+            overflow-y: auto;
+            padding: 0;
+        }
+
+        .q-item {
+            display: flex;
+            align-items: center;
+            padding: 10px 1rem;
+            border-bottom: 1px solid var(--border);
+            background: var(--bg-panel);
+        }
+
+        .q-item.active {
+            border-left: 3px solid var(--accent);
+            background: rgba(0, 240, 255, 0.05);
+        }
+
+        .q-img {
+            width: 36px;
+            height: 36px;
             border-radius: 50%;
-            background-color: #334155;
+            background: #222;
+            margin-right: 12px;
             background-size: cover;
+            flex-shrink: 0;
         }
 
         .q-info {
             flex: 1;
-            overflow: hidden;
+            min-width: 0;
         }
 
         .q-name {
-            font-weight: 500;
+            font-size: 0.9rem;
             white-space: nowrap;
             overflow: hidden;
             text-overflow: ellipsis;
         }
 
         .q-id {
-            font-size: 0.75rem;
-            color: var(--text-secondary);
-            font-family: monospace;
+            font-size: 0.7rem;
+            color: var(--text-muted);
+            font-family: var(--font-mono);
         }
 
-        .logs {
-            grid-column: 1 / -1;
-            background-color: #000;
-            color: #22c55e;
-            font-family: monospace;
+        .controls-wrapper {
             padding: 1rem;
-            border-radius: 0.5rem;
-            height: 200px;
-            overflow-y: auto;
-            font-size: 0.9rem;
+            border-top: 1px solid var(--border);
+            background: #080808;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
         }
 
-        .controls {
+        .btn-ctrl {
+            padding: 12px;
+            border: 1px solid var(--border);
+            background: var(--bg-panel);
+            color: var(--text-main);
+            font-size: 0.8rem;
+            font-weight: bold;
+            cursor: pointer;
+            border-radius: 6px;
+            text-transform: uppercase;
+        }
+
+        .btn-ctrl.primary {
+            background: var(--accent);
+            color: #000;
+            border-color: var(--accent);
+        }
+
+        /* --- Column 2: Search --- */
+        .search-area {
+            padding: 1.5rem;
+            border-bottom: 1px solid var(--border);
+            background: linear-gradient(180deg, rgba(0, 0, 0, 0.5) 0%, rgba(0, 0, 0, 0) 100%);
+        }
+
+        .search-input-wrapper {
             display: flex;
-            gap: 0.5rem;
-            margin-bottom: 1rem;
+            gap: 10px;
         }
 
-        .pause-btn {
-            background-color: var(--amber-color);
+        input.main-search {
+            flex: 1;
+            background: #000;
+            border: 1px solid var(--border);
+            padding: 12px 16px;
+            color: white;
+            font-size: 1rem;
+            /* Prevent iOS zoom */
+            border-radius: 6px;
+            outline: none;
+            min-width: 0;
         }
 
-        .resume-btn {
-            background-color: var(--success-color);
+        input.main-search:focus {
+            border-color: var(--accent);
+        }
+
+        .results-scroll {
+            flex: 1;
+            overflow-y: auto;
+            padding: 1.5rem;
+            background-color: #080808;
+        }
+
+        .cards-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+            /* Responsive Grid */
+            gap: 1rem;
+        }
+
+        .artist-card {
+            background: #111;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            overflow: hidden;
+            position: relative;
+        }
+
+        .card-cover {
+            height: 160px;
+            background: #222;
+            position: relative;
+        }
+
+        .card-cover img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            opacity: 0.9;
+        }
+
+        .card-body {
+            padding: 12px;
+        }
+
+        .card-title {
+            font-weight: 600;
+            font-size: 0.9rem;
+            margin-bottom: 4px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .card-meta {
+            font-size: 0.7rem;
+            color: var(--text-muted);
+            font-family: var(--font-mono);
+            margin-bottom: 12px;
+        }
+
+        .btn-add {
+            width: 100%;
+            background: transparent;
+            border: 1px solid var(--border);
+            color: var(--text-main);
+            padding: 10px;
+            font-size: 0.8rem;
+            cursor: pointer;
+            border-radius: 4px;
+        }
+
+        .btn-add:active {
+            background: var(--accent);
+            color: #000;
+        }
+
+        /* --- Column 3: Monitor --- */
+        .active-jobs-container {
+            flex: 0 0 30%;
+            min-height: 150px;
+            border-bottom: 1px solid var(--border);
+            overflow-y: auto;
+            padding: 1rem;
+            background: #000;
+        }
+
+        .job-card {
+            background: #111;
+            border-left: 3px solid var(--accent);
+            padding: 12px;
+            margin-bottom: 8px;
+            font-family: var(--font-mono);
+            font-size: 0.8rem;
+            position: relative;
+        }
+
+        .logs-container {
+            flex: 1;
+            background: #050505;
+            overflow-y: auto;
+            padding: 0.5rem;
+            font-family: var(--font-mono);
+            font-size: 0.75rem;
+            color: #888;
+            min-height: 200px;
+            /* Minimum height on mobile */
+        }
+
+        .log-entry {
+            padding: 6px 8px;
+            border-bottom: 1px solid #111;
+            word-break: break-all;
+            line-height: 1.4;
+        }
+
+        .log-type-info {
+            color: var(--accent);
+        }
+
+        .log-type-success {
+            color: var(--success);
+        }
+
+        .log-type-error {
+            color: var(--danger);
+        }
+
+        /* --- RESPONSIVE BREAKPOINTS --- */
+
+        /* Tablet & Small Desktop (Below 1024px) */
+        @media (max-width: 1024px) {
+            .grid-container {
+                grid-template-columns: 260px 1fr;
+                /* 2 Columns */
+            }
+
+            /* Order: Stats/Queue Left, Search Right. Monitor/Logs moved below? 
+               Or simply hide logs on tablet?
+               Let's stack Monitor/Logs under Queue in the first column */
+
+            /* We need to re-arrange via HTML structure or accept scrolling.
+               Simplest Responsive Fix:
+               Make Search take full width of column 2.
+               Column 1 has Stats, Queue, AND Monitor/Logs stacked. */
+        }
+
+        /* Mobile (Below 768px) */
+        @media (max-width: 768px) {
+            body {
+                overflow: auto;
+                /* Enable page scrolling */
+                height: auto;
+            }
+
+            header {
+                padding: 0 1rem;
+            }
+
+            .brand-tag {
+                display: none;
+            }
+
+            /* Save space */
+            .system-status {
+                font-size: 0.7rem;
+                gap: 10px;
+            }
+
+            .status-item span {
+                display: none;
+            }
+
+            /* Hide labels "STATUS:", "IDLE:" */
+
+            .grid-container {
+                display: flex;
+                flex-direction: column;
+                /* Stack Everything */
+                overflow: visible;
+            }
+
+            .panel {
+                border-right: none;
+                border-bottom: 1px solid var(--border);
+                overflow: visible;
+                /* Let content grow */
+                height: auto !important;
+                flex: none;
+                /* Disable flex growing logic */
+            }
+
+            /* Reordering with Flex order: 
+               1. Stats/Control (Top)
+               2. Active Jobs (Monitor)
+               3. Search
+               4. Queue
+               5. Logs 
+            */
+
+            /* We need specific selectors to reorder if they are in different parent divs.
+               Since they are in 3 distinct panels, we reorder the panels. */
+
+            /* Panel 1: Stats/Queue */
+            aside.panel:first-of-type {
+                order: 1;
+            }
+
+            /* Panel 3: Monitor/Logs */
+            aside.panel:last-of-type {
+                order: 2;
+            }
+
+            /* Panel 2: Search */
+            main.panel {
+                order: 3;
+            }
+
+            /* Mobile Specific Adjustments */
+            .queue-list {
+                max-height: 300px;
+                /* Limit height so page isn't endless */
+                border-bottom: 1px solid var(--border);
+            }
+
+            .active-jobs-container {
+                min-height: auto;
+                max-height: 200px;
+            }
+
+            .logs-container {
+                max-height: 250px;
+            }
+
+            .results-scroll {
+                padding: 1rem;
+                overflow: visible;
+                /* Let grid grow page height */
+            }
+
+            .cards-grid {
+                grid-template-columns: 1fr 1fr;
+                /* 2 cards wide on phone */
+            }
+
+            .card-cover {
+                height: 140px;
+            }
         }
     </style>
 </head>
 
 <body>
-    <div class="status-bar">
-        <div id="status-badge" class="badge idle">Idle</div>
-        <div class="badge">Queue: <span id="queue-count">0</span></div>
-        <div class="badge">Idle Time: <span id="idle-timer">0</span>s</div>
-        <div class="badge">Current Index: <span id="current-index">0</span></div>
-    </div>
 
-    <div class="container">
-        <!-- Left: Search & Manual -->
-        <div class="card">
-            <h2>Search & Submit</h2>
-
-            <!-- Manual Input -->
-            <div class="search-box">
-                <input type="text" id="manual-id" placeholder="Enter ID directly (Video/Playlist/Artist/Channel)">
-                <button onclick="submitManual()">Submit ID</button>
-            </div>
-
-            <hr style="border-color: #334155; margin: 1.5rem 0;">
-
-            <!-- Search -->
-            <div class="search-box">
-                <input type="text" id="search-query" placeholder="Search for artist, song, etc..."
-                    onkeypress="handleEnter(event)">
-                <select id="search-filter">
-                    <option value="artists">Artists</option>
-                    <option value="songs">Songs</option>
-                    <option value="videos">Videos</option>
-                    <option value="albums">Albums</option>
-                    <option value="playlists">Playlists</option>
-                </select>
-                <button onclick="performSearch()">Search</button>
-            </div>
-
-            <div id="results-area" class="results"></div>
+    <header>
+        <div class="brand">
+            YT2IA <span>//</span> MC <span class="brand-tag">v4.0</span>
         </div>
+        <div class="system-status">
+            <div class="status-item"><span>STATUS:</span> <span id="sys-status" class="status-val online">ONLINE</span>
+            </div>
+            <div class="status-item"><span>IDLE:</span> <span id="sys-idle" class="status-val">0s</span></div>
+        </div>
+    </header>
 
-        <!-- Right: Queue & Controls -->
-        <div class="card">
-            <h2>Queue Control</h2>
+    <div class="grid-container">
 
-            <div class="controls">
-                <button id="pause-btn" class="pause-btn" onclick="togglePause()">PAUSE 1H</button>
-                <button onclick="startProcessing()" style="background-color: var(--success-color)">FORCE START</button>
+        <aside class="panel">
+            <div class="panel-head">Dashboard Stats</div>
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <div class="stat-num" id="stat-proc" style="color:var(--success)">0</div>
+                    <div class="stat-label">Processed</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-num" id="stat-skip" style="color:var(--warning)">0</div>
+                    <div class="stat-label">Skipped</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-num" id="stat-fail" style="color:var(--danger)">0</div>
+                    <div class="stat-label">Failed</div>
+                </div>
             </div>
 
-            <div id="queue-area" class="queue-list">
-                <div style="text-align: center; color: #94a3b8;">Queue empty</div>
+            <div class="controls-wrapper">
+                <button id="pause-btn" class="btn-ctrl" onclick="togglePause()">PAUSE SYSTEM</button>
+                <button class="btn-ctrl primary" onclick="forceStart()">FORCE START</button>
             </div>
 
-            <br>
-            <a href="/admin" style="color: var(--accent-color); text-decoration: none;">&rarr; Go to Admin Dashboard</a>
-        </div>
+            <div class="panel-head">
+                Queue (<span id="q-count">0</span>)
+                <button onclick="refreshQueue()"
+                    style="background:none; border:none; color:#666; cursor:pointer;">↻</button>
+            </div>
+            <div id="queue-list" class="queue-list">
+                <div style="padding:1rem; text-align:center; color:#444; font-size:0.8rem">Queue Empty</div>
+            </div>
+        </aside>
 
-        <!-- Logs -->
-        <div class="logs" id="log-window">
-            <div>System initialized...</div>
-        </div>
+        <main class="panel">
+            <div class="panel-head">Database Search</div>
+
+            <div class="search-area">
+                <div class="search-input-wrapper">
+                    <input type="text" id="search-input" class="main-search" placeholder="Artist Name or ID..."
+                        onkeypress="handleEnter(event)">
+                    <button class="btn-ctrl primary" onclick="performSearch()">GO</button>
+                </div>
+            </div>
+
+            <div class="results-scroll">
+                <div id="results-grid" class="cards-grid">
+                    <div style="grid-column:1/-1; text-align:center; color:#333; margin-top:2rem;">
+                        Use search bar to find artists
+                    </div>
+                </div>
+            </div>
+        </main>
+
+        <aside class="panel">
+            <div class="panel-head">Live Threads</div>
+            <div id="active-jobs" class="active-jobs-container">
+                <div style="color:#444; text-align:center; padding-top:10px; font-size:0.8rem;">No active threads</div>
+            </div>
+
+            <div class="panel-head">Event Log</div>
+            <div id="log-feed" class="logs-container">
+                <div class="log-entry"><span style="color:#444">--:--:--</span> System Initialized.</div>
+            </div>
+        </aside>
+
     </div>
 
     <script>
-        // State
+        // --- State ---
         let isPaused = false;
-        const metaCache = JSON.parse(localStorage.getItem('yt2ia_meta_cache') || '{}');
+        const metaCache = JSON.parse(localStorage.getItem('yt2ia_mc_v4_cache') || '{}');
 
-        // Utils
-        function handleEnter(e) {
-            if (e.key === 'Enter') performSearch();
-        }
+        // --- Utils ---
+        function handleEnter(e) { if (e.key === 'Enter') performSearch(); }
 
-        async function fetchMeta(id) {
-            if (metaCache[id]) return metaCache[id];
-
-            try {
-                // Determine if it's an artist ID (usually 24 chars starting with UC)
-                // But simplified: just try to fetch
-                const res = await fetch(`/api/meta?id=${id}`);
-                const data = await res.json();
-                if (data.name) {
-                    const meta = {
-                        name: data.name,
-                        avatar: (data.thumbnails && data.thumbnails.length) ? data.thumbnails[0].url : null
-                    };
-                    metaCache[id] = meta;
-                    localStorage.setItem('yt2ia_meta_cache', JSON.stringify(metaCache));
-                    return meta;
-                }
-            } catch (e) { console.log("Meta fetch failed", e); }
-            return null;
-        }
-
-        // Search
+        // --- Search ---
         async function performSearch() {
-            const query = document.getElementById('search-query').value;
-            const filter = document.getElementById('search-filter').value;
-            const area = document.getElementById('results-area');
-
+            const query = document.getElementById('search-input').value.trim();
+            const grid = document.getElementById('results-grid');
             if (!query) return;
 
-            area.innerHTML = '<div style="text-align:center">Searching...</div>';
+            grid.innerHTML = '<div style="grid-column:1/-1; text-align:center; color:var(--accent); padding:20px;">Scanning...</div>';
 
             try {
-                const res = await fetch(`/api/search?q=${encodeURIComponent(query)}&filter=${filter}`);
+                // Fetch artists
+                const res = await fetch(`https://ytify-backend.vercel.app/api/search?q=${encodeURIComponent(query)}&filter=artists`);
                 const data = await res.json();
 
-                area.innerHTML = '';
-
-                if (!data || data.length === 0) {
-                    area.innerHTML = '<div style="text-align:center">No results found</div>';
+                grid.innerHTML = '';
+                if (!data.results || !data.results.length) {
+                    grid.innerHTML = '<div style="grid-column:1/-1; text-align:center; color:var(--danger); padding:20px;">No results found.</div>';
                     return;
                 }
 
-                data.forEach(item => {
-                    const div = document.createElement('div');
-                    div.className = 'result-item';
+                data.results.forEach(item => {
+                    const thumb = item.thumbnails.length ? item.thumbnails[item.thumbnails.length - 1].url : '';
+                    const safeName = item.title.replace(/'/g, "\\'");
 
-                    const imgUrl = (item.thumbnails && item.thumbnails.length) ? item.thumbnails[0].url : '';
-
-                    div.innerHTML = `
-                        <img src="${imgUrl}" class="result-img" onerror="this.style.display='none'">
-                        <div class="result-info">
-                            <div class="result-title">${item.name || item.title}</div>
-                            <div class="result-sub">${item.browseId || item.videoId} • ${filter}</div>
+                    const card = document.createElement('div');
+                    card.className = 'artist-card';
+                    card.innerHTML = `
+                        <div class="card-cover">
+                            <img src="${thumb}" onerror="this.style.display='none'">
                         </div>
-                        <button class="add-btn" id="btn-${item.browseId || item.videoId}" onclick="addToQueue('${item.browseId || item.videoId}', '${item.name || item.title}')">Add</button>
+                        <div class="card-body">
+                            <div class="card-title">${item.title}</div>
+                            <div class="card-meta">${item.browseId}</div>
+                            <button id="btn-${item.browseId}" class="btn-add" 
+                                onclick="addQueue('${item.browseId}', '${safeName}')">
+                                ADD TO QUEUE
+                            </button>
+                        </div>
                     `;
-                    area.appendChild(div);
+                    grid.appendChild(card);
                 });
 
             } catch (e) {
-                area.innerHTML = '<div style="color:var(--danger-color)">Search failed</div>';
+                grid.innerHTML = '<div style="grid-column:1/-1; text-align:center; color:var(--danger);">API Error</div>';
             }
         }
 
-        // Actions
-        async function addToQueue(id, name) {
+        async function addQueue(id, name) {
             const btn = document.getElementById(`btn-${id}`);
-            if (btn) btn.textContent = '...';
+            if (btn) btn.innerText = "...";
 
-            let url = '/submit'; // default
-            let body = { input_id: id };
-
-            // Heuristic for artists
-            if (id.startsWith('UC') && id.length > 20) {
-                url = '/submitartist';
-                body = { browse_id: id, name: name || "" };
-            }
+            const endpoint = id.startsWith('UC') ? '/submitartist' : '/submit';
+            const payload = id.startsWith('UC') ? { browse_id: id, name: name } : { input_id: id };
 
             try {
-                const res = await fetch(url, {
+                const res = await fetch(endpoint, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(body)
+                    body: JSON.stringify(payload)
                 });
                 const data = await res.json();
-
                 if (btn) {
-                    if (data.duplicate) {
-                        btn.textContent = 'EXISTS';
-                        btn.className = 'add-btn exists';
-                    } else {
-                        btn.textContent = 'ADDED';
-                        setTimeout(() => btn.textContent = 'Add', 2000);
-                    }
+                    if (data.duplicate) { btn.innerText = "EXISTS"; btn.style.color = "var(--warning)"; }
+                    else { btn.innerText = "ADDED"; btn.style.borderColor = "var(--success)"; btn.style.color = "var(--success)"; refreshQueue(); }
                 }
-            } catch (e) {
-                if (btn) btn.textContent = 'Error';
-            }
+            } catch (e) { if (btn) btn.innerText = "FAILED"; }
         }
 
-        async function submitManual() {
-            const input = document.getElementById('manual-id');
-            const id = input.value.trim();
-            if (!id) return;
-
+        // --- Artist Meta Fetcher ---
+        async function fetchArtistMeta(id) {
+            if (metaCache[id]) return metaCache[id];
             try {
-                const res = await fetch('/submit', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ input_id: id })
-                });
+                const res = await fetch(`https://ytify-backend.vercel.app/api/artist/${id}`);
                 const data = await res.json();
-
-                if (data.duplicate) {
-                    alert('Already in queue!');
-                } else {
-                    alert('Added to queue');
-                    input.value = '';
+                if (data.artistName) {
+                    const meta = { name: data.artistName, avatar: data.artistAvatar };
+                    metaCache[id] = meta;
+                    localStorage.setItem('yt2ia_mc_v4_cache', JSON.stringify(metaCache));
+                    return meta;
                 }
-            } catch (e) { alert('Failed'); }
+            } catch (e) { }
+            return { name: id, avatar: null };
         }
 
-        async function togglePause() {
-            const btn = document.getElementById('pause-btn');
-            if (isPaused) {
-                // Resume
-                await fetch('/api/resume');
-                // State will update via SSE
-            } else {
-                // Pause
-                await fetch('/api/pause?duration=3600');
-            }
-        }
-
-        async function startProcessing() {
-            await fetch('/api/start');
-        }
-
-        // SSE & Updates
-        const evtSource = new EventSource("/stream");
-        const queueArea = document.getElementById('queue-area');
-        const logWindow = document.getElementById('log-window');
-
-        let lastQueueIds = [];
-
-        evtSource.onmessage = function (event) {
-            const data = JSON.parse(event.data);
-
-            // Basics
-            document.getElementById('queue-count').textContent = data.queue_count;
-            document.getElementById('idle-timer').textContent = data.idle_seconds;
-            document.getElementById('current-index').textContent = data.current_index;
-
-            // Status Badge
-            const badge = document.getElementById('status-badge');
-            const pauseTime = data.paused_until || 0;
-            const now = Date.now() / 1000;
-
-            if (pauseTime > now) {
-                isPaused = true;
-                const minLeft = Math.ceil((pauseTime - now) / 60);
-                badge.className = 'badge paused';
-                badge.textContent = `PAUSED (${minLeft}m)`;
-
-                const pBtn = document.getElementById('pause-btn');
-                if (pBtn) {
-                    pBtn.textContent = "RESUME";
-                    pBtn.className = "pause-btn resume-btn";
-                    pBtn.style.backgroundColor = "var(--success-color)";
-                }
-            } else {
-                isPaused = false;
-                const pBtn = document.getElementById('pause-btn');
-                if (pBtn) {
-                    pBtn.textContent = "PAUSE 1H";
-                    pBtn.className = "pause-btn";
-                    pBtn.style.backgroundColor = "var(--amber-color)";
-                }
-
-                if (data.is_processing) {
-                    badge.className = 'badge processing';
-                    badge.textContent = `Processing: ${data.current_id}`;
-                } else {
-                    badge.className = 'badge idle';
-                    badge.textContent = 'Idle';
-                }
-            }
-
-            // Logs
-            if (data.logs && data.logs.length) {
-                logWindow.innerHTML = data.logs.map(l => `<div>${l}</div>`).join('');
-                logWindow.scrollTop = logWindow.scrollHeight;
-            }
-
-            // Queue List Update (Optimization: only if count changes or force reload occasionally could be better, but we'll simplistic diffing)
-            // Actually, for visual smoothness, let's fetch full queue occasionally or use a separate loop?
-            // SSE doesn't send the full queue list (too big). We need to fetch it separately.
-            // But we can trigger a fetch if queue_count changes significantly or we haven't in a while.
-            // For now, let's just refresh queue list every 5 seconds via separate interval if user is looking.
-        };
-
-        // Poll Queue List
-        setInterval(async () => {
+        // --- Queue Logic ---
+        async function refreshQueue() {
+            const list = document.getElementById('queue-list');
             try {
                 const res = await fetch('/api/queue');
-                const qData = await res.json();
-                const items = qData.items || [];
+                const data = await res.json();
+                const items = data.items || [];
 
-                // Diff check to avoid DOM thrashing if identical? 
-                // Simple version: just rebuild
+                document.getElementById('q-count').innerText = items.length;
+
                 if (items.length === 0) {
-                    queueArea.innerHTML = '<div style="text-align: center; color: #94a3b8;">Queue empty</div>';
+                    list.innerHTML = '<div style="padding:1rem; text-align:center; color:#444; font-size:0.8rem">Queue Empty</div>';
                     return;
                 }
 
-                // We want to preserve existing elements if possible to keep images loaded
-                // But simple rebuilding is safer for correctness right now.
-
-                // Build HTML
                 let html = '';
                 for (const id of items) {
-                    // Check cache
-                    const meta = metaCache[id] || { name: '...', avatar: null };
-                    // If unknown, trigger fetch (async, won't block)
-                    if (meta.name === '...') fetchMeta(id);
+                    let meta = metaCache[id];
+                    if (!meta) {
+                        meta = { name: 'Loading...', avatar: null };
+                        fetchArtistMeta(id).then(m => {
+                            const el = document.getElementById(`qn-${id}`);
+                            if (el) el.innerText = m.name;
+                        });
+                    }
 
-                    const activeClass = (document.getElementById('status-badge').textContent.includes(id)) ? 'active' : '';
-
-                    const avatarStyle = meta.avatar ? `background-image: url('${meta.avatar}')` : '';
+                    const imgStyle = meta.avatar ? `background-image: url('${meta.avatar}')` : '';
+                    const isActive = document.getElementById('sys-status').dataset.activeId === id ? 'active' : '';
 
                     html += `
-                        <div class="queue-item ${activeClass}" id="q-item-${id}">
-                            <div class="q-avatar" style="${avatarStyle}"></div>
+                        <div class="q-item ${isActive}">
+                            <div class="q-img" style="${imgStyle}"></div>
                             <div class="q-info">
-                                <div class="q-name">${meta.name === '...' ? 'Loading...' : meta.name}</div>
+                                <div class="q-name" id="qn-${id}">${meta.name}</div>
                                 <div class="q-id">${id}</div>
                             </div>
                         </div>
                     `;
                 }
-                queueArea.innerHTML = html;
+                list.innerHTML = html;
 
             } catch (e) { }
-        }, 3000);
+        }
 
+        // --- SSE Stream ---
+        const sse = new EventSource('/stream');
+        const logFeed = document.getElementById('log-feed');
+        const jobsContainer = document.getElementById('active-jobs');
+
+        sse.onmessage = (e) => {
+            const data = JSON.parse(e.data);
+
+            // Stats
+            document.getElementById('sys-idle').innerText = data.idle_seconds + 's';
+            if (data.stats) {
+                document.getElementById('stat-proc').innerText = data.stats.processed || 0;
+                document.getElementById('stat-skip').innerText = data.stats.skipped || 0;
+                document.getElementById('stat-fail').innerText = data.stats.failed || 0;
+            }
+
+            // Status
+            const sysStatus = document.getElementById('sys-status');
+            const now = Date.now() / 1000;
+            const pBtn = document.getElementById('pause-btn');
+
+            if (data.paused_until > now) {
+                isPaused = true;
+                sysStatus.innerText = "PAUSED";
+                sysStatus.className = "status-val paused";
+                pBtn.innerText = "RESUME";
+                pBtn.style.color = "var(--success)";
+                pBtn.style.borderColor = "var(--success)";
+            } else {
+                isPaused = false;
+                if (data.is_processing) {
+                    sysStatus.innerText = "ACTIVE";
+                    sysStatus.className = "status-val online";
+                    sysStatus.dataset.activeId = data.current_id;
+                } else {
+                    sysStatus.innerText = "IDLE";
+                    sysStatus.className = "status-val";
+                    sysStatus.dataset.activeId = "";
+                }
+                pBtn.innerText = "PAUSE SYSTEM";
+                pBtn.style.color = "var(--text-main)";
+                pBtn.style.borderColor = "var(--border)";
+            }
+
+            // Jobs
+            const jobs = data.active_jobs || {};
+            const jobKeys = Object.keys(jobs);
+            if (jobKeys.length > 0) {
+                jobsContainer.innerHTML = '';
+                jobKeys.forEach(k => {
+                    const j = jobs[k];
+                    const div = document.createElement('div');
+                    div.className = 'job-card';
+                    div.innerHTML = `
+                        <div style="color:#fff; font-weight:bold; margin-bottom:4px;">${k}</div>
+                        <div style="color:var(--accent);">${j.status}</div>
+                    `;
+                    jobsContainer.appendChild(div);
+                });
+            } else {
+                jobsContainer.innerHTML = '<div style="color:#444; text-align:center; padding-top:10px; font-size:0.8rem;">No active threads</div>';
+            }
+
+            // Logs
+            if (data.logs && data.logs.length) {
+                data.logs.slice(-5).forEach(logStr => {
+                    if (logFeed.lastElementChild && logFeed.lastElementChild.innerText.includes(logStr)) return;
+
+                    const div = document.createElement('div');
+                    div.className = 'log-entry';
+
+                    let typeClass = '';
+                    if (logStr.includes('Success') || logStr.includes('Complete')) typeClass = 'log-type-success';
+                    else if (logStr.includes('Error') || logStr.includes('Failed')) typeClass = 'log-type-error';
+                    else if (logStr.includes('Uploading') || logStr.includes('Downloading')) typeClass = 'log-type-info';
+
+                    const timeMatch = logStr.match(/(\d{2}:\d{2}:\d{2})/);
+                    const time = timeMatch ? timeMatch[1] : '';
+                    const msg = logStr.split(' - INFO - ')[1] || logStr;
+
+                    div.innerHTML = `<span style="color:#444; margin-right:8px;">${time}</span><span class="${typeClass}">${msg}</span>`;
+                    logFeed.appendChild(div);
+                });
+                logFeed.scrollTop = logFeed.scrollHeight;
+            }
+        };
+
+        async function togglePause() {
+            if (isPaused) await fetch('/api/resume');
+            else await fetch('/api/pause?duration=3600');
+        }
+        async function forceStart() { await fetch('/api/start'); }
+
+        // Initial Load
+        refreshQueue();
     </script>
 </body>
 

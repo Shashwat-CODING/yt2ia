@@ -7,10 +7,13 @@ import os
 import threading
 import time
 import requests
+import aiohttp
+import asyncio
 
 from database import init_db, get_all_entries, clear_all_entries
+from database import init_pool as init_main_pool
 from worker import handle_submission, STATUS, initialize_cache
-from queue_db import init_queue_db, add_to_queue, get_next_from_queue, remove_from_queue, get_all_queue, get_queue_count, clear_queue
+from queue_db import init_queue_db, add_to_queue, get_next_from_queue, remove_from_queue, get_all_queue, get_queue_count, clear_queue, init_pool as init_queue_pool
 
 app = FastAPI()
 
@@ -118,15 +121,14 @@ async def resume_processing():
     return {"message": "Resumed processing"}
 
 # Search API
-import requests as http_requests
-
 @app.get("/api/search")
 async def search_items(q: str, filter: str = "artists"):
     try:
         url = f"https://ytify-backend.vercel.app/api/search?q={q}&filter={filter}"
-        response = http_requests.get(url, timeout=15)
-        if response.status_code == 200:
-            return response.json()
+        async with aiohttp.ClientSession() as session:
+            async with session.get(url, timeout=15) as response:
+                if response.status == 200:
+                    return await response.json()
         return {"error": "Search failed"}
     except Exception as e:
         return {"error": str(e)}
@@ -135,9 +137,10 @@ async def search_items(q: str, filter: str = "artists"):
 async def get_meta(id: str):
     try:
         url = f"https://ytify-backend.vercel.app/api/artist/{id}"
-        response = http_requests.get(url, timeout=15)
-        if response.status_code == 200:
-            return response.json()
+        async with aiohttp.ClientSession() as session:
+            async with session.get(url, timeout=15) as response:
+                if response.status == 200:
+                    return await response.json()
         return {"error": "Meta fetch failed"}
     except Exception as e:
         return {"error": str(e)}
@@ -172,16 +175,30 @@ class SubmitRequest(BaseModel):
     input_id: str
 
 @app.post("/submit")
-async def submit_job(req: SubmitRequest):
+async def submit_job(req: SubmitRequest, background_tasks: BackgroundTasks):
     update_activity()
-    if add_to_queue(req.input_id):
-        # If system was idle and not processing, start immediately
-        idle_time = time.time() - last_activity_time
-        if idle_time >= 5 and not is_processing:
-            trigger_processing()
-        return {"message": "Added to queue", "id": req.input_id}
+    inp = req.input_id.strip()
+    
+    # Check if this is a video ID (11 chars, no UC prefix usually)
+    # Basic heuristic: if it starts with UC, it's an artist/channel -> Queue DB
+    # If it is 11 chars (standard video id), or doesn't start with UC -> Treat as Video -> Background Task (No Queue DB)
+    
+    is_artist = inp.startswith("UC")
+    
+    if is_artist:
+        if add_to_queue(inp):
+            # Start processing if idle
+            idle_time = time.time() - last_activity_time
+            if idle_time >= 5 and not is_processing:
+                trigger_processing()
+            return {"message": "Added Artist to queue", "id": inp, "type": "artist"}
+        else:
+            return {"message": "Artist already in queue", "id": inp, "duplicate": True}
     else:
-        return {"message": "Already added", "id": req.input_id, "duplicate": True}
+        # It's a video (or playlist, but assuming video for single submission mostly)
+        # Process directly in background, do NOT add to DB queue
+        background_tasks.add_task(handle_submission, inp)
+        return {"message": "Processing started in background", "id": inp, "type": "video/other"}
 
 # Setup Templates
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -189,6 +206,8 @@ templates = Jinja2Templates(directory=os.path.join(BASE_DIR, "templates"))
 
 @app.on_event("startup")
 def on_startup():
+    init_main_pool()
+    init_queue_pool()
     init_db()
     init_queue_db()
     initialize_cache()
@@ -235,7 +254,7 @@ def queue_processor():
             if time.time() < pause_until:
                 continue
 
-            # Process if idle for 1+ min and not already processing
+            # Process if idle for 1+ min and not processing
             if idle_time >= 5 and not is_processing:
                 if get_queue_count() > 0:
                     process_one_item()

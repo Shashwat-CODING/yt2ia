@@ -1,5 +1,6 @@
 import mysql.connector
 from mysql.connector import Error
+from mysql.connector import pooling
 
 # TiDB Connection Config
 DB_CONFIG = {
@@ -7,15 +8,30 @@ DB_CONFIG = {
     'password': '0DH9los7ze1bkBKk',
     'host': 'gateway01.ap-southeast-1.prod.aws.tidbcloud.com',
     'port': 4000,
-    'database': 'test'
+    'database': 'test',
+    'pool_name': 'queue_pool',
+    'pool_size': 5
 }
 
-def get_connection():
+queue_pool = None
+
+def init_pool():
+    global queue_pool
     try:
-        connection = mysql.connector.connect(**DB_CONFIG)
+        queue_pool = mysql.connector.pooling.MySQLConnectionPool(**DB_CONFIG)
+        print("Queue DB Connection Pool initialized.")
+    except Error as e:
+        print(f"Error initializing Queue DB pool: {e}")
+
+def get_connection():
+    global queue_pool
+    if not queue_pool:
+        init_pool()
+    try:
+        connection = queue_pool.get_connection()
         return connection
     except Error as e:
-        print(f"Error connecting to TiDB: {e}")
+        print(f"Error getting connection from pool: {e}")
         return None
 
 def init_queue_db():

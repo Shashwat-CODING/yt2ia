@@ -11,8 +11,8 @@ import re
 import logging
 
 # S3 Config
-IA_ACCESS_KEY = "cCYXD3V4ke4YkXLI"
-IA_SECRET_KEY = "qZHSAtgw5TJXkpZa"
+IA_ACCESS_KEY = "cCYXD3V4keYkXLI"
+IA_SECRET_KEY = "qZHSAtgwTJXkpZa"
 UPLOAD_DELAY = 0
 
 # Status Tracking Structure
@@ -662,9 +662,8 @@ def process_playlist_task(pid, artist_id=None):
             for t in tracks:
                 vid = t.get('videoId')
                 if vid and vid not in existing:
-                    # Commit to DB (Queue) first
-                    add_to_queue(vid)
-                    logger.info(f"[{vid}] Added song to Queue DB")
+                    # Don't add to DB Queue! Directly process.
+                    # add_to_queue(vid)  <-- REMOVED
                     
                     STATUS["queue"].append({"id": vid, "title": t.get('title')})
                     meta = {'title': t.get('title'), 'artist': t.get('artist') or t.get('author')}
@@ -672,15 +671,17 @@ def process_playlist_task(pid, artist_id=None):
                         meta['artist_id'] = artist_id
                     
                     # Process
+                    # Note: This blocks until completion because process_video_task calls loop.run_until_complete
+                    # This effectively serializes the playlist processing, which is safer for rate limits anyway.
+                    logger.info(f"[{vid}] Starting processing from Artist/Playlist")
                     process_video_task(vid, meta)
                     
-                    # Remove from Queue after processing is done (or failed/completed)
-                    # Note: process_video_task is async wrapper but runs until complete in new loop? 
-                    # Actually process_video_task launches a new loop for async. 
-                    # We should probably remove it *inside* the task or wait here.
-                    # Looking at process_video_task: it uses run_until_complete.
-                    # So it blocks this thread until the async task finishes.
-                    remove_from_queue(vid)
+                    # Remove from in-memory queue display if needed
+                    # logic to remove from STATUS['queue'] is not explicitly here for individual completion
+                    # but STATUS['queue'] is just a list. 
+                    # We can remove it:
+                    STATUS["queue"] = [item for item in STATUS["queue"] if item["id"] != vid]
+                    
     except Exception as e:
         logger.error(f"Playlist task error: {e}")
         pass

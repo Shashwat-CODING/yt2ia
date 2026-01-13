@@ -1,5 +1,6 @@
 import mysql.connector
 from mysql.connector import Error
+from mysql.connector import pooling
 import re
 
 # DB Config
@@ -11,18 +12,27 @@ DB_CONFIG = {
     'database': 'test',
     'raise_on_warnings': True,
     'ssl_verify_cert': True,
-    'ssl_ca': '/etc/ssl/cert.pem'
+    'ssl_ca': '/etc/ssl/cert.pem',
+    'pool_name': 'main_pool',
+    'pool_size': 5
 }
 
-def get_connection():
+main_pool = None
+
+def init_pool():
+    global main_pool
     try:
-        connection = mysql.connector.connect(
-            host='gateway01.ap-southeast-1.prod.aws.tidbcloud.com',
-            database='test',
-            user='2H65kCXGzjYP3va.root',
-            password='l0ztMMj9ZJJWhQtI',
-            port=4000
-        )
+        main_pool = mysql.connector.pooling.MySQLConnectionPool(**DB_CONFIG)
+        print("Main DB Connection Pool initialized.")
+    except Error as e:
+        print(f"Error initializing Main DB pool: {e}")
+
+def get_connection():
+    global main_pool
+    if not main_pool:
+        init_pool()
+    try:
+        connection = main_pool.get_connection()
         return connection
     except Error as e:
         print(f"Error connecting to MySQL Platform: {e}")
