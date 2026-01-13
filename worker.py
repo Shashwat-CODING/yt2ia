@@ -368,8 +368,8 @@ def find_zeabur(video_id):
                 best = formats[0]
                 raw = best.get('url')
                 if raw:
-                    enc = urllib.parse.quote(raw)
-                    return f"https://hdtkfyf.zeabur.app/api/proxy?url={enc}", best
+                    enc = (raw)
+                    return f"{enc}", best
     except:
         pass
     return None, None
