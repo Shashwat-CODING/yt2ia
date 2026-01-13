@@ -5,6 +5,7 @@ import os
 import time
 import urllib.parse
 from database import save_entry, get_all_video_ids, init_db
+from queue_db import add_to_queue, remove_from_queue
 from internetarchive import upload
 import re
 import logging
@@ -603,7 +604,11 @@ async def process_video_async(video_id, metadata_override=None):
         
         if success:
             save_entry(f"{title} - {author}", ia_url)
+            logger.info(f"[{video_id}] Added song to Main DB: {title} - {author}")
+            
             VIDEO_ID_CACHE.add(video_id)
+            logger.info(f"[{video_id}] Added ID to Cache")
+            
             STATUS["stats"]["processed"] += 1
             logger.info(f"[{video_id}] Upload Complete: {ia_url}")
             set_status(video_id, "Complete!")
@@ -657,12 +662,27 @@ def process_playlist_task(pid, artist_id=None):
             for t in tracks:
                 vid = t.get('videoId')
                 if vid and vid not in existing:
+                    # Commit to DB (Queue) first
+                    add_to_queue(vid)
+                    logger.info(f"[{vid}] Added song to Queue DB")
+                    
                     STATUS["queue"].append({"id": vid, "title": t.get('title')})
                     meta = {'title': t.get('title'), 'artist': t.get('artist') or t.get('author')}
                     if artist_id:
                         meta['artist_id'] = artist_id
+                    
+                    # Process
                     process_video_task(vid, meta)
-    except:
+                    
+                    # Remove from Queue after processing is done (or failed/completed)
+                    # Note: process_video_task is async wrapper but runs until complete in new loop? 
+                    # Actually process_video_task launches a new loop for async. 
+                    # We should probably remove it *inside* the task or wait here.
+                    # Looking at process_video_task: it uses run_until_complete.
+                    # So it blocks this thread until the async task finishes.
+                    remove_from_queue(vid)
+    except Exception as e:
+        logger.error(f"Playlist task error: {e}")
         pass
 
 def handle_submission(inp):
