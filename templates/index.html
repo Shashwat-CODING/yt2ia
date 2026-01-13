@@ -4,24 +4,27 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>YT2IA // MISSION CONTROL</title>
+    <title>MISSION CONTROL // RED SHIFT</title>
     <style>
         :root {
-            /* Palette: Obsidian & Neon */
-            --bg-body: #050505;
-            --bg-panel: #0f0f0f;
-            --bg-header: #0a0a0a;
-            --border: #222;
+            /* Palette: Red Shift */
+            --bg-deep: #020205;
+            --bg-panel: rgba(15, 10, 10, 0.75);
+            /* Dark Red tint */
+            --border: rgba(255, 255, 255, 0.08);
 
-            --text-main: #e0e0e0;
-            --text-muted: #666;
+            --text-main: #f0f0f0;
+            --text-muted: #888;
 
-            --accent: #00f0ff;
-            /* Cyan */
-            --success: #00ff9d;
-            /* Matrix Green */
-            --warning: #ffb800;
-            --danger: #ff0055;
+            --accent: #f43f5e;
+            /* Rose */
+            --accent-dim: rgba(244, 63, 94, 0.15);
+            --success: #10b981;
+            /* Emerald */
+            --warning: #f59e0b;
+            /* Amber */
+            --danger: #ef4444;
+            /* Red */
 
             --font-ui: 'Inter', system-ui, -apple-system, sans-serif;
             --font-mono: 'JetBrains Mono', 'Consolas', monospace;
@@ -32,7 +35,7 @@
         }
 
         body {
-            background-color: var(--bg-body);
+            background-color: var(--bg-deep);
             color: var(--text-main);
             font-family: var(--font-ui);
             margin: 0;
@@ -40,20 +43,34 @@
             display: flex;
             flex-direction: column;
             overflow: hidden;
-            /* Desktop default: body doesn't scroll, panels do */
+        }
+
+        /* --- Ambient Visualizer --- */
+        #canvas {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            z-index: 0;
+            pointer-events: none;
+            filter: blur(80px) contrast(150%) brightness(110%);
+            opacity: 0.6;
+            transform: scale(1.1);
         }
 
         /* --- Header --- */
         header {
             height: 60px;
-            background: var(--bg-header);
+            background: rgba(10, 5, 5, 0.8);
             border-bottom: 1px solid var(--border);
             display: flex;
             align-items: center;
             justify-content: space-between;
             padding: 0 1.5rem;
             flex-shrink: 0;
-            z-index: 10;
+            z-index: 20;
+            backdrop-filter: blur(10px);
         }
 
         .brand {
@@ -63,6 +80,7 @@
             display: flex;
             align-items: center;
             gap: 10px;
+            font-family: var(--font-mono);
         }
 
         .brand span {
@@ -71,24 +89,18 @@
 
         .brand-tag {
             font-size: 0.6rem;
-            background: var(--border);
+            background: var(--accent-dim);
+            border: 1px solid rgba(244, 63, 94, 0.3);
             padding: 2px 6px;
             border-radius: 4px;
-            color: #888;
-            display: inline-block;
+            color: var(--accent);
         }
 
         .system-status {
             display: flex;
             gap: 1.5rem;
             font-family: var(--font-mono);
-            font-size: 0.8rem;
-            text-align: right;
-        }
-
-        .status-item span {
-            color: var(--text-muted);
-            margin-right: 5px;
+            font-size: 0.75rem;
         }
 
         .status-val {
@@ -97,6 +109,7 @@
 
         .status-val.online {
             color: var(--success);
+            text-shadow: 0 0 10px rgba(16, 185, 129, 0.4);
         }
 
         .status-val.paused {
@@ -107,9 +120,11 @@
         .grid-container {
             flex: 1;
             display: grid;
-            /* Desktop: 3 Columns */
             grid-template-columns: 280px 1fr 350px;
+            /* Left | Center | Right */
             overflow: hidden;
+            position: relative;
+            z-index: 10;
         }
 
         /* --- Panel Components --- */
@@ -118,9 +133,9 @@
             display: flex;
             flex-direction: column;
             background: var(--bg-panel);
+            backdrop-filter: blur(20px);
+            /* Glass effect */
             overflow: hidden;
-            min-width: 0;
-            /* Prevents flex items from breaking grid */
         }
 
         .panel:last-child {
@@ -130,9 +145,7 @@
         .panel-head {
             padding: 1rem;
             border-bottom: 1px solid var(--border);
-            border-top: 1px solid var(--border);
-            /* Visual separator on mobile */
-            font-size: 0.75rem;
+            font-size: 0.7rem;
             font-weight: 700;
             text-transform: uppercase;
             letter-spacing: 1px;
@@ -143,11 +156,7 @@
             background: rgba(255, 255, 255, 0.02);
         }
 
-        .panel:first-child .panel-head:first-child {
-            border-top: none;
-        }
-
-        /* --- Column 1: Stats & Queue --- */
+        /* --- Stats Grid --- */
         .stats-grid {
             display: grid;
             grid-template-columns: 1fr 1fr 1fr;
@@ -157,9 +166,9 @@
         }
 
         .stat-card {
-            background: #000;
+            background: rgba(0, 0, 0, 0.3);
             border: 1px solid var(--border);
-            border-radius: 4px;
+            border-radius: 6px;
             padding: 10px 5px;
             text-align: center;
         }
@@ -178,6 +187,7 @@
             text-transform: uppercase;
         }
 
+        /* --- Queue --- */
         .queue-list {
             flex: 1;
             overflow-y: auto;
@@ -187,24 +197,28 @@
         .q-item {
             display: flex;
             align-items: center;
-            padding: 10px 1rem;
+            padding: 12px 1rem;
             border-bottom: 1px solid var(--border);
-            background: var(--bg-panel);
+            transition: background 0.2s;
+        }
+
+        .q-item:hover {
+            background: rgba(255, 255, 255, 0.05);
         }
 
         .q-item.active {
             border-left: 3px solid var(--accent);
-            background: rgba(0, 240, 255, 0.05);
+            background: linear-gradient(90deg, var(--accent-dim), transparent);
         }
 
         .q-img {
-            width: 36px;
-            height: 36px;
+            width: 32px;
+            height: 32px;
             border-radius: 50%;
             background: #222;
             margin-right: 12px;
             background-size: cover;
-            flex-shrink: 0;
+            border: 1px solid rgba(255, 255, 255, 0.1);
         }
 
         .q-info {
@@ -213,7 +227,8 @@
         }
 
         .q-name {
-            font-size: 0.9rem;
+            font-size: 0.85rem;
+            font-weight: 500;
             white-space: nowrap;
             overflow: hidden;
             text-overflow: ellipsis;
@@ -225,10 +240,11 @@
             font-family: var(--font-mono);
         }
 
+        /* --- Controls --- */
         .controls-wrapper {
             padding: 1rem;
             border-top: 1px solid var(--border);
-            background: #080808;
+            background: rgba(0, 0, 0, 0.4);
             display: grid;
             grid-template-columns: 1fr 1fr;
             gap: 10px;
@@ -237,70 +253,90 @@
         .btn-ctrl {
             padding: 12px;
             border: 1px solid var(--border);
-            background: var(--bg-panel);
+            background: rgba(255, 255, 255, 0.05);
             color: var(--text-main);
-            font-size: 0.8rem;
+            font-size: 0.75rem;
             font-weight: bold;
             cursor: pointer;
             border-radius: 6px;
             text-transform: uppercase;
+            transition: all 0.2s;
+        }
+
+        .btn-ctrl:hover {
+            background: rgba(255, 255, 255, 0.1);
         }
 
         .btn-ctrl.primary {
             background: var(--accent);
-            color: #000;
+            color: white;
             border-color: var(--accent);
+            box-shadow: 0 0 15px rgba(244, 63, 94, 0.2);
         }
 
-        /* --- Column 2: Search --- */
+        .btn-ctrl.primary:hover {
+            background: #ff4d6d;
+            box-shadow: 0 0 20px rgba(244, 63, 94, 0.4);
+        }
+
+        /* --- Center: Search --- */
         .search-area {
             padding: 1.5rem;
             border-bottom: 1px solid var(--border);
-            background: linear-gradient(180deg, rgba(0, 0, 0, 0.5) 0%, rgba(0, 0, 0, 0) 100%);
+            background: linear-gradient(180deg, rgba(0, 0, 0, 0.3) 0%, transparent 100%);
         }
 
         .search-input-wrapper {
             display: flex;
             gap: 10px;
+            max-width: 600px;
+            margin: 0 auto;
         }
 
         input.main-search {
             flex: 1;
-            background: #000;
+            background: rgba(0, 0, 0, 0.3);
             border: 1px solid var(--border);
             padding: 12px 16px;
             color: white;
-            font-size: 1rem;
-            /* Prevent iOS zoom */
-            border-radius: 6px;
+            font-family: var(--font-mono);
+            font-size: 0.9rem;
+            border-radius: 8px;
             outline: none;
-            min-width: 0;
+            transition: 0.2s;
         }
 
         input.main-search:focus {
             border-color: var(--accent);
+            box-shadow: 0 0 15px var(--accent-dim);
+            background: rgba(0, 0, 0, 0.5);
         }
 
         .results-scroll {
             flex: 1;
             overflow-y: auto;
             padding: 1.5rem;
-            background-color: #080808;
         }
 
         .cards-grid {
             display: grid;
             grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
-            /* Responsive Grid */
             gap: 1rem;
+            max-width: 1000px;
+            margin: 0 auto;
         }
 
         .artist-card {
-            background: #111;
+            background: rgba(20, 20, 25, 0.6);
             border: 1px solid var(--border);
             border-radius: 8px;
             overflow: hidden;
-            position: relative;
+            transition: transform 0.2s;
+        }
+
+        .artist-card:hover {
+            transform: translateY(-4px);
+            border-color: var(--accent);
         }
 
         .card-cover {
@@ -313,7 +349,6 @@
             width: 100%;
             height: 100%;
             object-fit: cover;
-            opacity: 0.9;
         }
 
         .card-body {
@@ -340,55 +375,51 @@
             width: 100%;
             background: transparent;
             border: 1px solid var(--border);
-            color: var(--text-main);
-            padding: 10px;
-            font-size: 0.8rem;
+            color: var(--text-muted);
+            padding: 8px;
+            font-size: 0.75rem;
             cursor: pointer;
             border-radius: 4px;
+            transition: 0.2s;
         }
 
-        .btn-add:active {
-            background: var(--accent);
-            color: #000;
+        .btn-add:hover {
+            border-color: var(--accent);
+            color: var(--accent);
+            background: var(--accent-dim);
         }
 
-        /* --- Column 3: Monitor --- */
+        /* --- Right: Monitor --- */
         .active-jobs-container {
-            flex: 0 0 30%;
-            min-height: 150px;
+            flex: 0 0 35%;
             border-bottom: 1px solid var(--border);
             overflow-y: auto;
             padding: 1rem;
-            background: #000;
+            background: rgba(0, 0, 0, 0.2);
         }
 
         .job-card {
-            background: #111;
+            background: rgba(255, 255, 255, 0.03);
             border-left: 3px solid var(--accent);
-            padding: 12px;
+            padding: 10px;
             margin-bottom: 8px;
             font-family: var(--font-mono);
-            font-size: 0.8rem;
-            position: relative;
+            font-size: 0.75rem;
         }
 
         .logs-container {
             flex: 1;
-            background: #050505;
             overflow-y: auto;
             padding: 0.5rem;
             font-family: var(--font-mono);
             font-size: 0.75rem;
             color: #888;
-            min-height: 200px;
-            /* Minimum height on mobile */
         }
 
         .log-entry {
-            padding: 6px 8px;
-            border-bottom: 1px solid #111;
+            padding: 4px 8px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.03);
             word-break: break-all;
-            line-height: 1.4;
         }
 
         .log-type-info {
@@ -403,125 +434,84 @@
             color: var(--danger);
         }
 
-        /* --- RESPONSIVE BREAKPOINTS --- */
-
-        /* Tablet & Small Desktop (Below 1024px) */
-        @media (max-width: 1024px) {
-            .grid-container {
-                grid-template-columns: 260px 1fr;
-                /* 2 Columns */
-            }
-
-            /* Order: Stats/Queue Left, Search Right. Monitor/Logs moved below? 
-               Or simply hide logs on tablet?
-               Let's stack Monitor/Logs under Queue in the first column */
-
-            /* We need to re-arrange via HTML structure or accept scrolling.
-               Simplest Responsive Fix:
-               Make Search take full width of column 2.
-               Column 1 has Stats, Queue, AND Monitor/Logs stacked. */
+        /* --- Scrollbar --- */
+        ::-webkit-scrollbar {
+            width: 6px;
         }
 
-        /* Mobile (Below 768px) */
+        ::-webkit-scrollbar-track {
+            background: rgba(0, 0, 0, 0.2);
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 3px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: var(--accent);
+        }
+
+        /* --- Mobile Responsive --- */
         @media (max-width: 768px) {
             body {
                 overflow: auto;
-                /* Enable page scrolling */
                 height: auto;
             }
-
-            header {
-                padding: 0 1rem;
-            }
-
-            .brand-tag {
-                display: none;
-            }
-
-            /* Save space */
-            .system-status {
-                font-size: 0.7rem;
-                gap: 10px;
-            }
-
-            .status-item span {
-                display: none;
-            }
-
-            /* Hide labels "STATUS:", "IDLE:" */
 
             .grid-container {
                 display: flex;
                 flex-direction: column;
-                /* Stack Everything */
                 overflow: visible;
             }
 
             .panel {
                 border-right: none;
                 border-bottom: 1px solid var(--border);
-                overflow: visible;
-                /* Let content grow */
                 height: auto !important;
                 flex: none;
-                /* Disable flex growing logic */
+                overflow: visible;
             }
 
-            /* Reordering with Flex order: 
-               1. Stats/Control (Top)
-               2. Active Jobs (Monitor)
-               3. Search
-               4. Queue
-               5. Logs 
-            */
-
-            /* We need specific selectors to reorder if they are in different parent divs.
-               Since they are in 3 distinct panels, we reorder the panels. */
-
-            /* Panel 1: Stats/Queue */
+            /* Reorder for Mobile */
+            /* 1. Stats/Queue */
             aside.panel:first-of-type {
                 order: 1;
             }
 
-            /* Panel 3: Monitor/Logs */
+            /* 2. Monitor */
             aside.panel:last-of-type {
                 order: 2;
             }
 
-            /* Panel 2: Search */
+            /* 3. Search */
             main.panel {
                 order: 3;
             }
 
-            /* Mobile Specific Adjustments */
             .queue-list {
-                max-height: 300px;
-                /* Limit height so page isn't endless */
-                border-bottom: 1px solid var(--border);
+                max-height: 250px;
             }
 
             .active-jobs-container {
-                min-height: auto;
                 max-height: 200px;
             }
 
             .logs-container {
-                max-height: 250px;
+                max-height: 200px;
             }
 
             .results-scroll {
                 padding: 1rem;
                 overflow: visible;
-                /* Let grid grow page height */
             }
 
             .cards-grid {
                 grid-template-columns: 1fr 1fr;
-                /* 2 cards wide on phone */
             }
 
-            .card-cover {
-                height: 140px;
+            .brand-tag {
+                display: none;
             }
         }
     </style>
@@ -529,21 +519,22 @@
 
 <body>
 
+    <canvas id="canvas"></canvas>
+
     <header>
         <div class="brand">
-            YT2IA <span>//</span> MC <span class="brand-tag">v4.0</span>
+            MISSION <span>//</span> CONTROL <span class="brand-tag">RED SHIFT</span>
         </div>
         <div class="system-status">
-            <div class="status-item"><span>STATUS:</span> <span id="sys-status" class="status-val online">ONLINE</span>
-            </div>
-            <div class="status-item"><span>IDLE:</span> <span id="sys-idle" class="status-val">0s</span></div>
+            <div class="status-item"><span id="sys-status" class="status-val online">ONLINE</span></div>
+            <div class="status-item" style="color:var(--text-muted)">IDLE: <span id="sys-idle">0s</span></div>
         </div>
     </header>
 
     <div class="grid-container">
 
         <aside class="panel">
-            <div class="panel-head">Dashboard Stats</div>
+            <div class="panel-head">System Telemetry</div>
             <div class="stats-grid">
                 <div class="stat-card">
                     <div class="stat-num" id="stat-proc" style="color:var(--success)">0</div>
@@ -565,42 +556,44 @@
             </div>
 
             <div class="panel-head">
-                Queue (<span id="q-count">0</span>)
+                Pending Queue (<span id="q-count">0</span>)
                 <button onclick="refreshQueue()"
-                    style="background:none; border:none; color:#666; cursor:pointer;">↻</button>
+                    style="background:none; border:none; color:var(--text-muted); cursor:pointer;">↻</button>
             </div>
             <div id="queue-list" class="queue-list">
-                <div style="padding:1rem; text-align:center; color:#444; font-size:0.8rem">Queue Empty</div>
+                <div style="padding:2rem; text-align:center; color:var(--text-muted); font-size:0.8rem">Queue Empty
+                </div>
             </div>
         </aside>
 
         <main class="panel">
-            <div class="panel-head">Database Search</div>
+            <div class="panel-head">Artist Database</div>
 
             <div class="search-area">
                 <div class="search-input-wrapper">
-                    <input type="text" id="search-input" class="main-search" placeholder="Artist Name or ID..."
+                    <input type="text" id="search-input" class="main-search" placeholder="Enter Artist Name or ID..."
                         onkeypress="handleEnter(event)">
-                    <button class="btn-ctrl primary" onclick="performSearch()">GO</button>
+                    <button class="btn-ctrl primary" onclick="performSearch()">SCAN</button>
                 </div>
             </div>
 
             <div class="results-scroll">
                 <div id="results-grid" class="cards-grid">
-                    <div style="grid-column:1/-1; text-align:center; color:#333; margin-top:2rem;">
-                        Use search bar to find artists
+                    <div style="grid-column:1/-1; text-align:center; color:var(--text-muted); margin-top:4rem;">
+                        Waiting for input...
                     </div>
                 </div>
             </div>
         </main>
 
         <aside class="panel">
-            <div class="panel-head">Live Threads</div>
+            <div class="panel-head">Active Threads</div>
             <div id="active-jobs" class="active-jobs-container">
-                <div style="color:#444; text-align:center; padding-top:10px; font-size:0.8rem;">No active threads</div>
+                <div style="color:var(--text-muted); text-align:center; padding-top:10px; font-size:0.8rem;">No active
+                    threads</div>
             </div>
 
-            <div class="panel-head">Event Log</div>
+            <div class="panel-head">Live Logs</div>
             <div id="log-feed" class="logs-container">
                 <div class="log-entry"><span style="color:#444">--:--:--</span> System Initialized.</div>
             </div>
@@ -609,29 +602,87 @@
     </div>
 
     <script>
-        // --- State ---
-        let isPaused = false;
-        const metaCache = JSON.parse(localStorage.getItem('yt2ia_mc_v4_cache') || '{}');
+        // --- Ambient Shift Visualizer ---
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+        const colors = ['#881337', '#be123c', '#e11d48', '#4c0519', '#312e81'];
 
-        // --- Utils ---
+        class Orb {
+            constructor() { this.reset(); }
+            reset() {
+                this.r = Math.random() * 200 + 100;
+                this.x = Math.random() * canvas.width;
+                this.y = Math.random() * canvas.height;
+                this.vx = (Math.random() - 0.5) * 0.2;
+                this.vy = (Math.random() - 0.5) * 0.2;
+                this.color = colors[Math.floor(Math.random() * colors.length)];
+            }
+            update() {
+                this.x += this.vx; this.y += this.vy;
+                if (this.x < -100 || this.x > canvas.width + 100) this.vx *= -1;
+                if (this.y < -100 || this.y > canvas.height + 100) this.vy *= -1;
+            }
+            draw() {
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.r, 0, Math.PI * 2);
+                ctx.fillStyle = this.color;
+                ctx.fill();
+            }
+        }
+
+        let orbs = [];
+        function initVisuals() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+            orbs = Array(7).fill().map(() => new Orb());
+            animate();
+        }
+        function animate() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            ctx.globalCompositeOperation = 'screen';
+            orbs.forEach(o => { o.update(); o.draw(); });
+            requestAnimationFrame(animate);
+        }
+        window.onresize = () => { canvas.width = window.innerWidth; canvas.height = window.innerHeight; };
+        initVisuals();
+
+        // --- Logic ---
+        let isPaused = false;
+        const metaCache = JSON.parse(localStorage.getItem('yt2ia_mc_red_cache') || '{}');
+
         function handleEnter(e) { if (e.key === 'Enter') performSearch(); }
 
-        // --- Search ---
+        // Fetch Artist Meta
+        async function fetchArtistMeta(id) {
+            if (metaCache[id]) return metaCache[id];
+            try {
+                const res = await fetch(`https://ytify-backend.vercel.app/api/artist/${id}`);
+                const data = await res.json();
+                if (data.artistName) {
+                    const meta = { name: data.artistName, avatar: data.artistAvatar };
+                    metaCache[id] = meta;
+                    localStorage.setItem('yt2ia_mc_red_cache', JSON.stringify(metaCache));
+                    return meta;
+                }
+            } catch (e) { }
+            return { name: id, avatar: null };
+        }
+
+        // Search
         async function performSearch() {
             const query = document.getElementById('search-input').value.trim();
             const grid = document.getElementById('results-grid');
             if (!query) return;
 
-            grid.innerHTML = '<div style="grid-column:1/-1; text-align:center; color:var(--accent); padding:20px;">Scanning...</div>';
+            grid.innerHTML = '<div style="grid-column:1/-1; text-align:center; color:var(--accent); padding:2rem;">Scanning Database...</div>';
 
             try {
-                // Fetch artists
                 const res = await fetch(`https://ytify-backend.vercel.app/api/search?q=${encodeURIComponent(query)}&filter=artists`);
                 const data = await res.json();
 
                 grid.innerHTML = '';
                 if (!data.results || !data.results.length) {
-                    grid.innerHTML = '<div style="grid-column:1/-1; text-align:center; color:var(--danger); padding:20px;">No results found.</div>';
+                    grid.innerHTML = '<div style="grid-column:1/-1; text-align:center; color:var(--danger); padding:2rem;">No results found.</div>';
                     return;
                 }
 
@@ -658,13 +709,14 @@
                 });
 
             } catch (e) {
-                grid.innerHTML = '<div style="grid-column:1/-1; text-align:center; color:var(--danger);">API Error</div>';
+                grid.innerHTML = '<div style="grid-column:1/-1; text-align:center; color:var(--danger);">API Connection Failed</div>';
             }
         }
 
+        // Add Queue
         async function addQueue(id, name) {
             const btn = document.getElementById(`btn-${id}`);
-            if (btn) btn.innerText = "...";
+            if (btn) { btn.innerText = "..."; btn.style.color = "var(--accent)"; }
 
             const endpoint = id.startsWith('UC') ? '/submitartist' : '/submit';
             const payload = id.startsWith('UC') ? { browse_id: id, name: name } : { input_id: id };
@@ -677,29 +729,13 @@
                 });
                 const data = await res.json();
                 if (btn) {
-                    if (data.duplicate) { btn.innerText = "EXISTS"; btn.style.color = "var(--warning)"; }
-                    else { btn.innerText = "ADDED"; btn.style.borderColor = "var(--success)"; btn.style.color = "var(--success)"; refreshQueue(); }
+                    if (data.duplicate) { btn.innerText = "EXISTS"; btn.style.color = "var(--warning)"; btn.style.borderColor = "var(--warning)"; }
+                    else { btn.innerText = "QUEUED"; btn.style.borderColor = "var(--success)"; btn.style.color = "var(--success)"; refreshQueue(); }
                 }
             } catch (e) { if (btn) btn.innerText = "FAILED"; }
         }
 
-        // --- Artist Meta Fetcher ---
-        async function fetchArtistMeta(id) {
-            if (metaCache[id]) return metaCache[id];
-            try {
-                const res = await fetch(`https://ytify-backend.vercel.app/api/artist/${id}`);
-                const data = await res.json();
-                if (data.artistName) {
-                    const meta = { name: data.artistName, avatar: data.artistAvatar };
-                    metaCache[id] = meta;
-                    localStorage.setItem('yt2ia_mc_v4_cache', JSON.stringify(metaCache));
-                    return meta;
-                }
-            } catch (e) { }
-            return { name: id, avatar: null };
-        }
-
-        // --- Queue Logic ---
+        // Queue Display
         async function refreshQueue() {
             const list = document.getElementById('queue-list');
             try {
@@ -710,7 +746,7 @@
                 document.getElementById('q-count').innerText = items.length;
 
                 if (items.length === 0) {
-                    list.innerHTML = '<div style="padding:1rem; text-align:center; color:#444; font-size:0.8rem">Queue Empty</div>';
+                    list.innerHTML = '<div style="padding:2rem; text-align:center; color:var(--text-muted); font-size:0.8rem">Queue Empty</div>';
                     return;
                 }
 
@@ -718,7 +754,7 @@
                 for (const id of items) {
                     let meta = metaCache[id];
                     if (!meta) {
-                        meta = { name: 'Loading...', avatar: null };
+                        meta = { name: 'Resolving...', avatar: null };
                         fetchArtistMeta(id).then(m => {
                             const el = document.getElementById(`qn-${id}`);
                             if (el) el.innerText = m.name;
@@ -743,7 +779,7 @@
             } catch (e) { }
         }
 
-        // --- SSE Stream ---
+        // SSE Monitor
         const sse = new EventSource('/stream');
         const logFeed = document.getElementById('log-feed');
         const jobsContainer = document.getElementById('active-jobs');
@@ -774,12 +810,12 @@
             } else {
                 isPaused = false;
                 if (data.is_processing) {
-                    sysStatus.innerText = "ACTIVE";
+                    sysStatus.innerText = "ACTIVE: " + (data.current_id || '');
                     sysStatus.className = "status-val online";
                     sysStatus.dataset.activeId = data.current_id;
                 } else {
-                    sysStatus.innerText = "IDLE";
-                    sysStatus.className = "status-val";
+                    sysStatus.innerText = "ONLINE";
+                    sysStatus.className = "status-val online";
                     sysStatus.dataset.activeId = "";
                 }
                 pBtn.innerText = "PAUSE SYSTEM";
@@ -797,13 +833,13 @@
                     const div = document.createElement('div');
                     div.className = 'job-card';
                     div.innerHTML = `
-                        <div style="color:#fff; font-weight:bold; margin-bottom:4px;">${k}</div>
+                        <div style="color:white; font-weight:bold; margin-bottom:4px;">${k}</div>
                         <div style="color:var(--accent);">${j.status}</div>
                     `;
                     jobsContainer.appendChild(div);
                 });
             } else {
-                jobsContainer.innerHTML = '<div style="color:#444; text-align:center; padding-top:10px; font-size:0.8rem;">No active threads</div>';
+                jobsContainer.innerHTML = '<div style="color:var(--text-muted); text-align:center; padding-top:10px; font-size:0.8rem;">No active threads</div>';
             }
 
             // Logs
@@ -823,7 +859,7 @@
                     const time = timeMatch ? timeMatch[1] : '';
                     const msg = logStr.split(' - INFO - ')[1] || logStr;
 
-                    div.innerHTML = `<span style="color:#444; margin-right:8px;">${time}</span><span class="${typeClass}">${msg}</span>`;
+                    div.innerHTML = `<span style="color:#555; margin-right:8px;">${time}</span><span class="${typeClass}">${msg}</span>`;
                     logFeed.appendChild(div);
                 });
                 logFeed.scrollTop = logFeed.scrollHeight;
@@ -836,7 +872,7 @@
         }
         async function forceStart() { await fetch('/api/start'); }
 
-        // Initial Load
+        // Init
         refreshQueue();
     </script>
 </body>

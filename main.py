@@ -222,6 +222,10 @@ async def admin_dashboard(request: Request):
 async def read_root(request: Request):
     return templates.TemplateResponse("index.html", {"request": request})
 
+@app.get("/player", response_class=HTMLResponse)
+async def player_page(request: Request):
+    return templates.TemplateResponse("player.html", {"request": request})
+
 @app.get("/status")
 async def get_status():
     global last_activity_time, is_processing, current_processing_id
