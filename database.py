@@ -10,9 +10,8 @@ DB_CONFIG = {
     'host': 'gateway01.ap-southeast-1.prod.aws.tidbcloud.com',
     'port': 4000,
     'database': 'test',
+    'database': 'test',
     'raise_on_warnings': True,
-    'ssl_verify_cert': True,
-    'ssl_ca': '/etc/ssl/cert.pem',
     'pool_name': 'main_pool',
     'pool_size': 5
 }
