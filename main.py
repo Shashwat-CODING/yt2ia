@@ -124,7 +124,7 @@ async def resume_processing():
 @app.get("/api/search")
 async def search_items(q: str, filter: str = "artists"):
     try:
-        url = f"https://ytify-backend.vercel.app/api/search?q={q}&filter={filter}"
+        url = f"https://ytify-backend.zeabur.app/api/search?q={q}&filter={filter}"
         async with aiohttp.ClientSession() as session:
             async with session.get(url, timeout=15) as response:
                 if response.status == 200:
@@ -136,7 +136,7 @@ async def search_items(q: str, filter: str = "artists"):
 @app.get("/api/meta")
 async def get_meta(id: str):
     try:
-        url = f"https://ytify-backend.vercel.app/api/artist/{id}"
+        url = f"https://ytify-backend.zeabur.app/api/artist/{id}"
         async with aiohttp.ClientSession() as session:
             async with session.get(url, timeout=15) as response:
                 if response.status == 200:
