@@ -69,8 +69,11 @@ def remove_status(video_id):
     if video_id in STATUS["active_jobs"]:
         del STATUS["active_jobs"][video_id]
 
-YTIFY_API_BASE = "https://ytify-backend.vercel.app/api"
+YTIFY_API_BASE = "https://ytify-backend.zeabur.app/api"
 INVIDIOUS_INSTANCES = [
+  "https://inv-veltrix.zeabur.app",
+  "https://inv-veltrix-1.zeabur.app",
+  "https://inv-veltrix-2.zeabur.app",
   "https://compilations.broquemonsieur.net",
   "https://invidious.frontendfriendly.xyz",
   "https://invidious.privacyfucking.rocks",
