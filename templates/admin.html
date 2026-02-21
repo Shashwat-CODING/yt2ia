@@ -1,0 +1,485 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>COALESCE // ADMIN</title>
+    <style>
+        :root {
+            --bg-deep: #020205;
+            --bg-panel: rgba(10, 10, 15, 0.65);
+            --border: rgba(255, 255, 255, 0.08);
+
+            --text-main: #f0f0f0;
+            --text-muted: #777;
+
+            --accent: #f43f5e;
+            /* Rose/Red for Admin Danger Actions */
+            --success: #10b981;
+            /* Emerald */
+            --highlight: #00f0ff;
+            /* Cyan */
+
+            --font-ui: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            --font-mono: 'JetBrains Mono', monospace;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            background-color: var(--bg-deep);
+            color: var(--text-main);
+            font-family: var(--font-ui);
+            height: 100vh;
+            overflow: hidden;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        /* --- Scrollbar --- */
+        ::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: rgba(0, 0, 0, 0.2);
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 3px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: rgba(255, 255, 255, 0.2);
+        }
+
+        /* --- Ambient Visualizer --- */
+        #canvas {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            z-index: 0;
+            pointer-events: none;
+            filter: blur(90px) contrast(140%) brightness(120%);
+            opacity: 0.6;
+            transform: scale(1.1);
+        }
+
+        /* --- Interface --- */
+        .interface-wrapper {
+            position: relative;
+            z-index: 10;
+            width: 100%;
+            max-width: 800px;
+            /* Wider for Admin Table */
+            height: 85vh;
+            display: flex;
+            flex-direction: column;
+            background: var(--bg-panel);
+            backdrop-filter: blur(30px) saturate(180%);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.6);
+            overflow: hidden;
+        }
+
+        /* --- Header --- */
+        header {
+            padding: 1.25rem 2rem;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: rgba(255, 255, 255, 0.02);
+        }
+
+        .brand {
+            font-family: var(--font-mono);
+            font-weight: 700;
+            letter-spacing: -0.5px;
+            font-size: 1.1rem;
+            color: white;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .brand span {
+            color: var(--accent);
+        }
+
+        .tag {
+            font-size: 0.6rem;
+            background: rgba(244, 63, 94, 0.1);
+            border: 1px solid rgba(244, 63, 94, 0.3);
+            color: var(--accent);
+            padding: 2px 8px;
+            border-radius: 4px;
+        }
+
+        .status-badge {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-family: var(--font-mono);
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            background: rgba(0, 0, 0, 0.3);
+            padding: 6px 12px;
+            border-radius: 20px;
+            border: 1px solid var(--border);
+        }
+
+        .dot {
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background: var(--text-muted);
+        }
+
+        .dot.live {
+            background: var(--success);
+            box-shadow: 0 0 8px var(--success);
+        }
+
+        .dot.error {
+            background: var(--accent);
+        }
+
+        /* --- Queue Container --- */
+        .queue-header {
+            padding: 1rem 2rem;
+            border-bottom: 1px solid var(--border);
+            display: grid;
+            grid-template-columns: 3rem 2fr 1.5fr 80px;
+            font-family: var(--font-mono);
+            font-size: 0.7rem;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            background: rgba(0, 0, 0, 0.2);
+        }
+
+        .queue-list {
+            flex: 1;
+            overflow-y: auto;
+            padding: 0;
+        }
+
+        .q-item {
+            display: grid;
+            grid-template-columns: 3rem 2fr 1.5fr 80px;
+            align-items: center;
+            padding: 1rem 2rem;
+            border-bottom: 1px solid var(--border);
+            transition: background 0.2s;
+        }
+
+        .q-item:hover {
+            background: rgba(255, 255, 255, 0.03);
+        }
+
+        .q-avatar {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            background: #222;
+            object-fit: cover;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .q-info {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+        }
+
+        .q-name {
+            font-weight: 600;
+            font-size: 0.9rem;
+            color: var(--text-main);
+            margin-bottom: 2px;
+        }
+
+        .q-sub {
+            font-size: 0.7rem;
+            color: var(--text-muted);
+        }
+
+        .q-id {
+            font-family: var(--font-mono);
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            background: rgba(255, 255, 255, 0.05);
+            padding: 4px 8px;
+            border-radius: 4px;
+            width: fit-content;
+        }
+
+        .btn-del {
+            background: transparent;
+            border: 1px solid var(--border);
+            color: var(--text-muted);
+            padding: 6px;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: 0.2s;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .btn-del:hover {
+            border-color: var(--accent);
+            color: var(--accent);
+            background: rgba(244, 63, 94, 0.1);
+        }
+
+        /* --- Empty State --- */
+        .empty-state {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100%;
+            color: var(--text-muted);
+            gap: 1rem;
+        }
+
+        .empty-icon {
+            font-size: 2rem;
+            opacity: 0.3;
+        }
+
+        /* --- Responsive --- */
+        @media (max-width: 600px) {
+            .interface-wrapper {
+                height: 100vh;
+                border-radius: 0;
+                border: none;
+            }
+
+            header {
+                padding: 1rem;
+            }
+
+            .queue-header {
+                display: none;
+            }
+
+            /* Hide labels on mobile */
+
+            .q-item {
+                grid-template-columns: 3rem 1fr 40px;
+                /* Avatar | Info | Delete */
+                padding: 1rem;
+                gap: 10px;
+            }
+
+            .q-id {
+                display: none;
+            }
+
+            /* Hide ID on mobile */
+        }
+    </style>
+</head>
+
+<body>
+
+    <canvas id="canvas"></canvas>
+
+    <div class="interface-wrapper">
+        <header>
+            <div class="brand">
+                COALESCE <span>//</span> ADMIN <div class="tag">ROOT</div>
+            </div>
+            <div class="status-badge">
+                <div id="status-dot" class="dot"></div>
+                <span id="status-text">CONNECTING</span>
+            </div>
+        </header>
+
+        <div class="queue-header">
+            <div>Img</div>
+            <div>Entry Details</div>
+            <div>Identifier</div>
+            <div style="text-align:center">Act</div>
+        </div>
+
+        <div id="queue-container" class="queue-list">
+        </div>
+    </div>
+
+    <script>
+        // --- Ambient Shift Visualizer ---
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+
+        // Admin Palette: Darker, Red/Teal mix
+        const colors = ['#881337', '#be123c', '#134e4a', '#0f766e', '#111827'];
+
+        class Orb {
+            constructor() { this.reset(); }
+            reset() {
+                this.r = Math.random() * 200 + 100;
+                this.x = Math.random() * canvas.width;
+                this.y = Math.random() * canvas.height;
+                this.vx = (Math.random() - 0.5) * 0.2; // Slow drift
+                this.vy = (Math.random() - 0.5) * 0.2;
+                this.color = colors[Math.floor(Math.random() * colors.length)];
+            }
+            update() {
+                this.x += this.vx; this.y += this.vy;
+                if (this.x < -100 || this.x > canvas.width + 100) this.vx *= -1;
+                if (this.y < -100 || this.y > canvas.height + 100) this.vy *= -1;
+            }
+            draw() {
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.r, 0, Math.PI * 2);
+                ctx.fillStyle = this.color;
+                ctx.fill();
+            }
+        }
+
+        let orbs = [];
+        function initVisuals() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+            orbs = Array(6).fill().map(() => new Orb());
+            animate();
+        }
+        function animate() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            ctx.globalCompositeOperation = 'screen'; // Blend mode
+            orbs.forEach(o => { o.update(); o.draw(); });
+            requestAnimationFrame(animate);
+        }
+        window.onresize = () => { canvas.width = window.innerWidth; canvas.height = window.innerHeight; };
+        initVisuals();
+
+
+        // --- Admin Logic ---
+        const metaCache = JSON.parse(localStorage.getItem('yt2ia_admin_v2_cache') || '{}');
+        const POLL_RATE = 5000;
+        let pollTimer;
+
+        // 1. Fetch Meta
+        async function fetchArtistMeta(id) {
+            if (metaCache[id]) return metaCache[id];
+            try {
+                const res = await fetch(`https://ytify-backend.vercel.app/api/artist/${id}`);
+                const data = await res.json();
+                if (data.artistName) {
+                    const meta = { name: data.artistName, avatar: data.artistAvatar };
+                    metaCache[id] = meta;
+                    localStorage.setItem('yt2ia_admin_v2_cache', JSON.stringify(metaCache));
+                    return meta;
+                }
+            } catch (e) { }
+            return { name: 'Processing...', avatar: null };
+        }
+
+        // 2. Queue Manager
+        async function refreshQueue() {
+            const container = document.getElementById('queue-container');
+            const dot = document.getElementById('status-dot');
+            const txt = document.getElementById('status-text');
+
+            try {
+                const res = await fetch('/api/queue');
+                const data = await res.json();
+                const items = data.items || [];
+
+                // Update Status
+                dot.className = "dot live";
+                txt.innerText = `LIVE (${items.length})`;
+
+                if (items.length === 0) {
+                    container.innerHTML = `
+                        <div class="empty-state">
+                            <div class="empty-icon">∅</div>
+                            <div>Queue is empty</div>
+                        </div>
+                    `;
+                    return;
+                }
+
+                let html = '';
+                for (const id of items) {
+                    // Check cache or default
+                    let meta = metaCache[id] || { name: 'Resolving ID...', avatar: null };
+
+                    // Trigger async fetch if needed (lazy load)
+                    if (meta.name === 'Resolving ID...') {
+                        fetchArtistMeta(id).then(m => {
+                            const n = document.getElementById(`n-${id}`);
+                            const i = document.getElementById(`i-${id}`);
+                            if (n) n.innerText = m.name;
+                            if (i && m.avatar) i.src = m.avatar;
+                        });
+                    }
+
+                    const avatar = meta.avatar || 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0ibm9uZSIgc3Ryb2tlPSIjNTU1IiBzdHJva2Utd2lkdGg9IjIiPjxjaXJjbGUgY3g9IjEyIiBjeT0iMTIiIHI9IjEwIi8+PC9zdmc+';
+
+                    html += `
+                        <div class="q-item" id="row-${id}">
+                            <img src="${avatar}" id="i-${id}" class="q-avatar">
+                            <div class="q-info">
+                                <div class="q-name" id="n-${id}">${meta.name}</div>
+                                <div class="q-sub">Queued Item</div>
+                            </div>
+                            <div class="q-id">${id}</div>
+                            <div style="text-align:center">
+                                <button class="btn-del" onclick="removeItem('${id}')" title="Delete">
+                                    <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+                                </button>
+                            </div>
+                        </div>
+                    `;
+                }
+
+                // Diff check to prevent UI jump would be ideal, but innerHTML is fine for admin
+                if (container.innerHTML !== html) container.innerHTML = html;
+
+            } catch (e) {
+                dot.className = "dot error";
+                txt.innerText = "OFFLINE";
+            }
+        }
+
+        async function removeItem(id) {
+            if (!confirm("Delete this item?")) return;
+            try {
+                // Optimistic delete
+                const row = document.getElementById(`row-${id}`);
+                if (row) { row.style.opacity = '0'; setTimeout(() => row.remove(), 300); }
+
+                await fetch(`/api/queue/remove/${id}`, { method: 'POST' });
+                setTimeout(refreshQueue, 500); // Re-sync
+            } catch (e) { alert("Delete failed"); }
+        }
+
+        // Init
+        refreshQueue();
+        pollTimer = setInterval(refreshQueue, POLL_RATE);
+
+        // Page Visibiity Optimization
+        document.addEventListener("visibilitychange", () => {
+            if (document.hidden) clearInterval(pollTimer);
+            else { refreshQueue(); pollTimer = setInterval(refreshQueue, POLL_RATE); }
+        });
+
+    </script>
+</body>
+
+</html>

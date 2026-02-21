@@ -1,0 +1,880 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>MISSION CONTROL // RED SHIFT</title>
+    <style>
+        :root {
+            /* Palette: Red Shift */
+            --bg-deep: #020205;
+            --bg-panel: rgba(15, 10, 10, 0.75);
+            /* Dark Red tint */
+            --border: rgba(255, 255, 255, 0.08);
+
+            --text-main: #f0f0f0;
+            --text-muted: #888;
+
+            --accent: #f43f5e;
+            /* Rose */
+            --accent-dim: rgba(244, 63, 94, 0.15);
+            --success: #10b981;
+            /* Emerald */
+            --warning: #f59e0b;
+            /* Amber */
+            --danger: #ef4444;
+            /* Red */
+
+            --font-ui: 'Inter', system-ui, -apple-system, sans-serif;
+            --font-mono: 'JetBrains Mono', 'Consolas', monospace;
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            background-color: var(--bg-deep);
+            color: var(--text-main);
+            font-family: var(--font-ui);
+            margin: 0;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        /* --- Ambient Visualizer --- */
+        #canvas {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            z-index: 0;
+            pointer-events: none;
+            filter: blur(80px) contrast(150%) brightness(110%);
+            opacity: 0.6;
+            transform: scale(1.1);
+        }
+
+        /* --- Header --- */
+        header {
+            height: 60px;
+            background: rgba(10, 5, 5, 0.8);
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 1.5rem;
+            flex-shrink: 0;
+            z-index: 20;
+            backdrop-filter: blur(10px);
+        }
+
+        .brand {
+            font-weight: 800;
+            letter-spacing: -0.5px;
+            font-size: 1.1rem;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-family: var(--font-mono);
+        }
+
+        .brand span {
+            color: var(--accent);
+        }
+
+        .brand-tag {
+            font-size: 0.6rem;
+            background: var(--accent-dim);
+            border: 1px solid rgba(244, 63, 94, 0.3);
+            padding: 2px 6px;
+            border-radius: 4px;
+            color: var(--accent);
+        }
+
+        .system-status {
+            display: flex;
+            gap: 1.5rem;
+            font-family: var(--font-mono);
+            font-size: 0.75rem;
+        }
+
+        .status-val {
+            font-weight: bold;
+        }
+
+        .status-val.online {
+            color: var(--success);
+            text-shadow: 0 0 10px rgba(16, 185, 129, 0.4);
+        }
+
+        .status-val.paused {
+            color: var(--warning);
+        }
+
+        /* --- Grid Layout --- */
+        .grid-container {
+            flex: 1;
+            display: grid;
+            grid-template-columns: 280px 1fr 350px;
+            /* Left | Center | Right */
+            overflow: hidden;
+            position: relative;
+            z-index: 10;
+        }
+
+        /* --- Panel Components --- */
+        .panel {
+            border-right: 1px solid var(--border);
+            display: flex;
+            flex-direction: column;
+            background: var(--bg-panel);
+            backdrop-filter: blur(20px);
+            /* Glass effect */
+            overflow: hidden;
+        }
+
+        .panel:last-child {
+            border-right: none;
+        }
+
+        .panel-head {
+            padding: 1rem;
+            border-bottom: 1px solid var(--border);
+            font-size: 0.7rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: var(--text-muted);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: rgba(255, 255, 255, 0.02);
+        }
+
+        /* --- Stats Grid --- */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            padding: 1rem;
+            gap: 8px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .stat-card {
+            background: rgba(0, 0, 0, 0.3);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            padding: 10px 5px;
+            text-align: center;
+        }
+
+        .stat-num {
+            font-family: var(--font-mono);
+            font-size: 1.2rem;
+            font-weight: bold;
+            line-height: 1;
+            margin-bottom: 4px;
+        }
+
+        .stat-label {
+            font-size: 0.6rem;
+            color: var(--text-muted);
+            text-transform: uppercase;
+        }
+
+        /* --- Queue --- */
+        .queue-list {
+            flex: 1;
+            overflow-y: auto;
+            padding: 0;
+        }
+
+        .q-item {
+            display: flex;
+            align-items: center;
+            padding: 12px 1rem;
+            border-bottom: 1px solid var(--border);
+            transition: background 0.2s;
+        }
+
+        .q-item:hover {
+            background: rgba(255, 255, 255, 0.05);
+        }
+
+        .q-item.active {
+            border-left: 3px solid var(--accent);
+            background: linear-gradient(90deg, var(--accent-dim), transparent);
+        }
+
+        .q-img {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            background: #222;
+            margin-right: 12px;
+            background-size: cover;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .q-info {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .q-name {
+            font-size: 0.85rem;
+            font-weight: 500;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .q-id {
+            font-size: 0.7rem;
+            color: var(--text-muted);
+            font-family: var(--font-mono);
+        }
+
+        /* --- Controls --- */
+        .controls-wrapper {
+            padding: 1rem;
+            border-top: 1px solid var(--border);
+            background: rgba(0, 0, 0, 0.4);
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+        }
+
+        .btn-ctrl {
+            padding: 12px;
+            border: 1px solid var(--border);
+            background: rgba(255, 255, 255, 0.05);
+            color: var(--text-main);
+            font-size: 0.75rem;
+            font-weight: bold;
+            cursor: pointer;
+            border-radius: 6px;
+            text-transform: uppercase;
+            transition: all 0.2s;
+        }
+
+        .btn-ctrl:hover {
+            background: rgba(255, 255, 255, 0.1);
+        }
+
+        .btn-ctrl.primary {
+            background: var(--accent);
+            color: white;
+            border-color: var(--accent);
+            box-shadow: 0 0 15px rgba(244, 63, 94, 0.2);
+        }
+
+        .btn-ctrl.primary:hover {
+            background: #ff4d6d;
+            box-shadow: 0 0 20px rgba(244, 63, 94, 0.4);
+        }
+
+        /* --- Center: Search --- */
+        .search-area {
+            padding: 1.5rem;
+            border-bottom: 1px solid var(--border);
+            background: linear-gradient(180deg, rgba(0, 0, 0, 0.3) 0%, transparent 100%);
+        }
+
+        .search-input-wrapper {
+            display: flex;
+            gap: 10px;
+            max-width: 600px;
+            margin: 0 auto;
+        }
+
+        input.main-search {
+            flex: 1;
+            background: rgba(0, 0, 0, 0.3);
+            border: 1px solid var(--border);
+            padding: 12px 16px;
+            color: white;
+            font-family: var(--font-mono);
+            font-size: 0.9rem;
+            border-radius: 8px;
+            outline: none;
+            transition: 0.2s;
+        }
+
+        input.main-search:focus {
+            border-color: var(--accent);
+            box-shadow: 0 0 15px var(--accent-dim);
+            background: rgba(0, 0, 0, 0.5);
+        }
+
+        .results-scroll {
+            flex: 1;
+            overflow-y: auto;
+            padding: 1.5rem;
+        }
+
+        .cards-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+            gap: 1rem;
+            max-width: 1000px;
+            margin: 0 auto;
+        }
+
+        .artist-card {
+            background: rgba(20, 20, 25, 0.6);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            overflow: hidden;
+            transition: transform 0.2s;
+        }
+
+        .artist-card:hover {
+            transform: translateY(-4px);
+            border-color: var(--accent);
+        }
+
+        .card-cover {
+            height: 160px;
+            background: #222;
+            position: relative;
+        }
+
+        .card-cover img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .card-body {
+            padding: 12px;
+        }
+
+        .card-title {
+            font-weight: 600;
+            font-size: 0.9rem;
+            margin-bottom: 4px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .card-meta {
+            font-size: 0.7rem;
+            color: var(--text-muted);
+            font-family: var(--font-mono);
+            margin-bottom: 12px;
+        }
+
+        .btn-add {
+            width: 100%;
+            background: transparent;
+            border: 1px solid var(--border);
+            color: var(--text-muted);
+            padding: 8px;
+            font-size: 0.75rem;
+            cursor: pointer;
+            border-radius: 4px;
+            transition: 0.2s;
+        }
+
+        .btn-add:hover {
+            border-color: var(--accent);
+            color: var(--accent);
+            background: var(--accent-dim);
+        }
+
+        /* --- Right: Monitor --- */
+        .active-jobs-container {
+            flex: 0 0 35%;
+            border-bottom: 1px solid var(--border);
+            overflow-y: auto;
+            padding: 1rem;
+            background: rgba(0, 0, 0, 0.2);
+        }
+
+        .job-card {
+            background: rgba(255, 255, 255, 0.03);
+            border-left: 3px solid var(--accent);
+            padding: 10px;
+            margin-bottom: 8px;
+            font-family: var(--font-mono);
+            font-size: 0.75rem;
+        }
+
+        .logs-container {
+            flex: 1;
+            overflow-y: auto;
+            padding: 0.5rem;
+            font-family: var(--font-mono);
+            font-size: 0.75rem;
+            color: #888;
+        }
+
+        .log-entry {
+            padding: 4px 8px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.03);
+            word-break: break-all;
+        }
+
+        .log-type-info {
+            color: var(--accent);
+        }
+
+        .log-type-success {
+            color: var(--success);
+        }
+
+        .log-type-error {
+            color: var(--danger);
+        }
+
+        /* --- Scrollbar --- */
+        ::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: rgba(0, 0, 0, 0.2);
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 3px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: var(--accent);
+        }
+
+        /* --- Mobile Responsive --- */
+        @media (max-width: 768px) {
+            body {
+                overflow: auto;
+                height: auto;
+            }
+
+            .grid-container {
+                display: flex;
+                flex-direction: column;
+                overflow: visible;
+            }
+
+            .panel {
+                border-right: none;
+                border-bottom: 1px solid var(--border);
+                height: auto !important;
+                flex: none;
+                overflow: visible;
+            }
+
+            /* Reorder for Mobile */
+            /* 1. Stats/Queue */
+            aside.panel:first-of-type {
+                order: 1;
+            }
+
+            /* 2. Monitor */
+            aside.panel:last-of-type {
+                order: 2;
+            }
+
+            /* 3. Search */
+            main.panel {
+                order: 3;
+            }
+
+            .queue-list {
+                max-height: 250px;
+            }
+
+            .active-jobs-container {
+                max-height: 200px;
+            }
+
+            .logs-container {
+                max-height: 200px;
+            }
+
+            .results-scroll {
+                padding: 1rem;
+                overflow: visible;
+            }
+
+            .cards-grid {
+                grid-template-columns: 1fr 1fr;
+            }
+
+            .brand-tag {
+                display: none;
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+    <canvas id="canvas"></canvas>
+
+    <header>
+        <div class="brand">
+            MISSION <span>//</span> CONTROL <span class="brand-tag">RED SHIFT</span>
+        </div>
+        <div class="system-status">
+            <div class="status-item"><span id="sys-status" class="status-val online">ONLINE</span></div>
+            <div class="status-item" style="color:var(--text-muted)">IDLE: <span id="sys-idle">0s</span></div>
+        </div>
+    </header>
+
+    <div class="grid-container">
+
+        <aside class="panel">
+            <div class="panel-head">System Telemetry</div>
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <div class="stat-num" id="stat-proc" style="color:var(--success)">0</div>
+                    <div class="stat-label">Processed</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-num" id="stat-skip" style="color:var(--warning)">0</div>
+                    <div class="stat-label">Skipped</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-num" id="stat-fail" style="color:var(--danger)">0</div>
+                    <div class="stat-label">Failed</div>
+                </div>
+            </div>
+
+            <div class="controls-wrapper">
+                <button id="pause-btn" class="btn-ctrl" onclick="togglePause()">PAUSE SYSTEM</button>
+                <button class="btn-ctrl primary" onclick="forceStart()">FORCE START</button>
+            </div>
+
+            <div class="panel-head">
+                Pending Queue (<span id="q-count">0</span>)
+                <button onclick="refreshQueue()"
+                    style="background:none; border:none; color:var(--text-muted); cursor:pointer;">↻</button>
+            </div>
+            <div id="queue-list" class="queue-list">
+                <div style="padding:2rem; text-align:center; color:var(--text-muted); font-size:0.8rem">Queue Empty
+                </div>
+            </div>
+        </aside>
+
+        <main class="panel">
+            <div class="panel-head">Artist Database</div>
+
+            <div class="search-area">
+                <div class="search-input-wrapper">
+                    <input type="text" id="search-input" class="main-search" placeholder="Enter Artist Name or ID..."
+                        onkeypress="handleEnter(event)">
+                    <button class="btn-ctrl primary" onclick="performSearch()">SCAN</button>
+                </div>
+            </div>
+
+            <div class="results-scroll">
+                <div id="results-grid" class="cards-grid">
+                    <div style="grid-column:1/-1; text-align:center; color:var(--text-muted); margin-top:4rem;">
+                        Waiting for input...
+                    </div>
+                </div>
+            </div>
+        </main>
+
+        <aside class="panel">
+            <div class="panel-head">Active Threads</div>
+            <div id="active-jobs" class="active-jobs-container">
+                <div style="color:var(--text-muted); text-align:center; padding-top:10px; font-size:0.8rem;">No active
+                    threads</div>
+            </div>
+
+            <div class="panel-head">Live Logs</div>
+            <div id="log-feed" class="logs-container">
+                <div class="log-entry"><span style="color:#444">--:--:--</span> System Initialized.</div>
+            </div>
+        </aside>
+
+    </div>
+
+    <script>
+        // --- Ambient Shift Visualizer ---
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+        const colors = ['#881337', '#be123c', '#e11d48', '#4c0519', '#312e81'];
+
+        class Orb {
+            constructor() { this.reset(); }
+            reset() {
+                this.r = Math.random() * 200 + 100;
+                this.x = Math.random() * canvas.width;
+                this.y = Math.random() * canvas.height;
+                this.vx = (Math.random() - 0.5) * 0.2;
+                this.vy = (Math.random() - 0.5) * 0.2;
+                this.color = colors[Math.floor(Math.random() * colors.length)];
+            }
+            update() {
+                this.x += this.vx; this.y += this.vy;
+                if (this.x < -100 || this.x > canvas.width + 100) this.vx *= -1;
+                if (this.y < -100 || this.y > canvas.height + 100) this.vy *= -1;
+            }
+            draw() {
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.r, 0, Math.PI * 2);
+                ctx.fillStyle = this.color;
+                ctx.fill();
+            }
+        }
+
+        let orbs = [];
+        function initVisuals() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+            orbs = Array(7).fill().map(() => new Orb());
+            animate();
+        }
+        function animate() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            ctx.globalCompositeOperation = 'screen';
+            orbs.forEach(o => { o.update(); o.draw(); });
+            requestAnimationFrame(animate);
+        }
+        window.onresize = () => { canvas.width = window.innerWidth; canvas.height = window.innerHeight; };
+        initVisuals();
+
+        // --- Logic ---
+        let isPaused = false;
+        const metaCache = JSON.parse(localStorage.getItem('yt2ia_mc_red_cache') || '{}');
+
+        function handleEnter(e) { if (e.key === 'Enter') performSearch(); }
+
+        // Fetch Artist Meta
+        async function fetchArtistMeta(id) {
+            if (metaCache[id]) return metaCache[id];
+            try {
+                const res = await fetch(`https://ytify-backend.vercel.app/api/artist/${id}`);
+                const data = await res.json();
+                if (data.artistName) {
+                    const meta = { name: data.artistName, avatar: data.artistAvatar };
+                    metaCache[id] = meta;
+                    localStorage.setItem('yt2ia_mc_red_cache', JSON.stringify(metaCache));
+                    return meta;
+                }
+            } catch (e) { }
+            return { name: id, avatar: null };
+        }
+
+        // Search
+        async function performSearch() {
+            const query = document.getElementById('search-input').value.trim();
+            const grid = document.getElementById('results-grid');
+            if (!query) return;
+
+            grid.innerHTML = '<div style="grid-column:1/-1; text-align:center; color:var(--accent); padding:2rem;">Scanning Database...</div>';
+
+            try {
+                const res = await fetch(`https://ytify-backend.vercel.app/api/search?q=${encodeURIComponent(query)}&filter=artists`);
+                const data = await res.json();
+
+                grid.innerHTML = '';
+                if (!data.results || !data.results.length) {
+                    grid.innerHTML = '<div style="grid-column:1/-1; text-align:center; color:var(--danger); padding:2rem;">No results found.</div>';
+                    return;
+                }
+
+                data.results.forEach(item => {
+                    const thumb = item.thumbnails.length ? item.thumbnails[item.thumbnails.length - 1].url : '';
+                    const safeName = item.title.replace(/'/g, "\\'");
+
+                    const card = document.createElement('div');
+                    card.className = 'artist-card';
+                    card.innerHTML = `
+                        <div class="card-cover">
+                            <img src="${thumb}" onerror="this.style.display='none'">
+                        </div>
+                        <div class="card-body">
+                            <div class="card-title">${item.title}</div>
+                            <div class="card-meta">${item.browseId}</div>
+                            <button id="btn-${item.browseId}" class="btn-add" 
+                                onclick="addQueue('${item.browseId}', '${safeName}')">
+                                ADD TO QUEUE
+                            </button>
+                        </div>
+                    `;
+                    grid.appendChild(card);
+                });
+
+            } catch (e) {
+                grid.innerHTML = '<div style="grid-column:1/-1; text-align:center; color:var(--danger);">API Connection Failed</div>';
+            }
+        }
+
+        // Add Queue
+        async function addQueue(id, name) {
+            const btn = document.getElementById(`btn-${id}`);
+            if (btn) { btn.innerText = "..."; btn.style.color = "var(--accent)"; }
+
+            const endpoint = id.startsWith('UC') ? '/submitartist' : '/submit';
+            const payload = id.startsWith('UC') ? { browse_id: id, name: name } : { input_id: id };
+
+            try {
+                const res = await fetch(endpoint, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                const data = await res.json();
+                if (btn) {
+                    if (data.duplicate) { btn.innerText = "EXISTS"; btn.style.color = "var(--warning)"; btn.style.borderColor = "var(--warning)"; }
+                    else { btn.innerText = "QUEUED"; btn.style.borderColor = "var(--success)"; btn.style.color = "var(--success)"; refreshQueue(); }
+                }
+            } catch (e) { if (btn) btn.innerText = "FAILED"; }
+        }
+
+        // Queue Display
+        async function refreshQueue() {
+            const list = document.getElementById('queue-list');
+            try {
+                const res = await fetch('/api/queue');
+                const data = await res.json();
+                const items = data.items || [];
+
+                document.getElementById('q-count').innerText = items.length;
+
+                if (items.length === 0) {
+                    list.innerHTML = '<div style="padding:2rem; text-align:center; color:var(--text-muted); font-size:0.8rem">Queue Empty</div>';
+                    return;
+                }
+
+                let html = '';
+                for (const id of items) {
+                    let meta = metaCache[id];
+                    if (!meta) {
+                        meta = { name: 'Resolving...', avatar: null };
+                        fetchArtistMeta(id).then(m => {
+                            const el = document.getElementById(`qn-${id}`);
+                            if (el) el.innerText = m.name;
+                        });
+                    }
+
+                    const imgStyle = meta.avatar ? `background-image: url('${meta.avatar}')` : '';
+                    const isActive = document.getElementById('sys-status').dataset.activeId === id ? 'active' : '';
+
+                    html += `
+                        <div class="q-item ${isActive}">
+                            <div class="q-img" style="${imgStyle}"></div>
+                            <div class="q-info">
+                                <div class="q-name" id="qn-${id}">${meta.name}</div>
+                                <div class="q-id">${id}</div>
+                            </div>
+                        </div>
+                    `;
+                }
+                list.innerHTML = html;
+
+            } catch (e) { }
+        }
+
+        // SSE Monitor
+        const sse = new EventSource('/stream');
+        const logFeed = document.getElementById('log-feed');
+        const jobsContainer = document.getElementById('active-jobs');
+
+        sse.onmessage = (e) => {
+            const data = JSON.parse(e.data);
+
+            // Stats
+            document.getElementById('sys-idle').innerText = data.idle_seconds + 's';
+            if (data.stats) {
+                document.getElementById('stat-proc').innerText = data.stats.processed || 0;
+                document.getElementById('stat-skip').innerText = data.stats.skipped || 0;
+                document.getElementById('stat-fail').innerText = data.stats.failed || 0;
+            }
+
+            // Status
+            const sysStatus = document.getElementById('sys-status');
+            const now = Date.now() / 1000;
+            const pBtn = document.getElementById('pause-btn');
+
+            if (data.paused_until > now) {
+                isPaused = true;
+                sysStatus.innerText = "PAUSED";
+                sysStatus.className = "status-val paused";
+                pBtn.innerText = "RESUME";
+                pBtn.style.color = "var(--success)";
+                pBtn.style.borderColor = "var(--success)";
+            } else {
+                isPaused = false;
+                if (data.is_processing) {
+                    sysStatus.innerText = "ACTIVE: " + (data.current_id || '');
+                    sysStatus.className = "status-val online";
+                    sysStatus.dataset.activeId = data.current_id;
+                } else {
+                    sysStatus.innerText = "ONLINE";
+                    sysStatus.className = "status-val online";
+                    sysStatus.dataset.activeId = "";
+                }
+                pBtn.innerText = "PAUSE SYSTEM";
+                pBtn.style.color = "var(--text-main)";
+                pBtn.style.borderColor = "var(--border)";
+            }
+
+            // Jobs
+            const jobs = data.active_jobs || {};
+            const jobKeys = Object.keys(jobs);
+            if (jobKeys.length > 0) {
+                jobsContainer.innerHTML = '';
+                jobKeys.forEach(k => {
+                    const j = jobs[k];
+                    const div = document.createElement('div');
+                    div.className = 'job-card';
+                    div.innerHTML = `
+                        <div style="color:white; font-weight:bold; margin-bottom:4px;">${k}</div>
+                        <div style="color:var(--accent);">${j.status}</div>
+                    `;
+                    jobsContainer.appendChild(div);
+                });
+            } else {
+                jobsContainer.innerHTML = '<div style="color:var(--text-muted); text-align:center; padding-top:10px; font-size:0.8rem;">No active threads</div>';
+            }
+
+            // Logs
+            if (data.logs && data.logs.length) {
+                data.logs.slice(-5).forEach(logStr => {
+                    if (logFeed.lastElementChild && logFeed.lastElementChild.innerText.includes(logStr)) return;
+
+                    const div = document.createElement('div');
+                    div.className = 'log-entry';
+
+                    let typeClass = '';
+                    if (logStr.includes('Success') || logStr.includes('Complete')) typeClass = 'log-type-success';
+                    else if (logStr.includes('Error') || logStr.includes('Failed')) typeClass = 'log-type-error';
+                    else if (logStr.includes('Uploading') || logStr.includes('Downloading')) typeClass = 'log-type-info';
+
+                    const timeMatch = logStr.match(/(\d{2}:\d{2}:\d{2})/);
+                    const time = timeMatch ? timeMatch[1] : '';
+                    const msg = logStr.split(' - INFO - ')[1] || logStr;
+
+                    div.innerHTML = `<span style="color:#555; margin-right:8px;">${time}</span><span class="${typeClass}">${msg}</span>`;
+                    logFeed.appendChild(div);
+                });
+                logFeed.scrollTop = logFeed.scrollHeight;
+            }
+        };
+
+        async function togglePause() {
+            if (isPaused) await fetch('/api/resume');
+            else await fetch('/api/pause?duration=3600');
+        }
+        async function forceStart() { await fetch('/api/start'); }
+
+        // Init
+        refreshQueue();
+    </script>
+</body>
+
+</html>
