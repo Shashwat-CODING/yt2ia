@@ -77,23 +77,7 @@ INVIDIOUS_INSTANCES = [
   "https://crispy-octo-waddle.netlify.app",
   "https://inv-veltrix.zeabur.app",
   "https://inv-veltrix-1.zeabur.app",
-  "https://www.gcx.co.in",
-  "https://invidious.einfachzocken.eu",
-  "https://invidious.nikkosphere.com",
-  "https://invidious.tiekoetter.com",
-  "https://inv.in.projectsegfau.lt",
-  "https://invidious.materialio.us",
-  "https://invidious.adminforge.de",
-  "https://inv.perditum.com",
-  "https://invidious.f5.si",
-  "https://iv.melmac.space",
-  "https://echostreamz.com",
-  "https://iv.ggtyler.dev",
-  "https://yt.omada.cafe",
-  "https://iv.nboeck.de",
-  "https://inv.vern.cc",
-  "https://lekker.gay",
-  "https://y.com.sb"
+  "https://www.gcx.co.in"
 ]
 
 # ---------- HELPER FUNCTIONS ----------
