@@ -75,8 +75,6 @@ INVIDIOUS_INSTANCES = [
   "https://ubiquitous-rugelach-b30b3f.netlify.app",
   "https://super-duper-system.netlify.app",
   "https://crispy-octo-waddle.netlify.app",
-  "https://inv-veltrix.zeabur.app",
-  "https://inv-veltrix-1.zeabur.app",
   "https://www.gcx.co.in"
 ]
 
