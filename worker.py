@@ -105,15 +105,28 @@ async def fetch_from_instance(session, video_id, instance_url):
             if response.status == 200:
                 data = await response.json()
                 return instance_url, data
-    except Exception:
-        pass
+            else:
+                try:
+                    err_data = await response.text()
+                    logger.warning(f"[{video_id}] Invidious instance {instance_url} returned {response.status}: {err_data}")
+                except Exception:
+                    logger.warning(f"[{video_id}] Invidious instance {instance_url} returned {response.status}")
+    except Exception as e:
+        logger.warning(f"[{video_id}] Invidious instance {instance_url} connection error: {e}")
     return None
 
+current_inv_index = 0
+
 async def fetch_details_sequential(video_id):
+    global current_inv_index
     async with aiohttp.ClientSession() as session:
-        for url in INVIDIOUS_INSTANCES:
+        num_instances = len(INVIDIOUS_INSTANCES)
+        for i in range(num_instances):
+            idx = (current_inv_index + i) % num_instances
+            url = INVIDIOUS_INSTANCES[idx]
             result = await fetch_from_instance(session, video_id, url)
             if result:
+                current_inv_index = idx  # Remember the working instance for the next video
                 return result
     return None, None
 
