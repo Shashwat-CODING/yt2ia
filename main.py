@@ -237,6 +237,7 @@ async def get_status():
         "is_processing": is_processing,
         "current_id": current_processing_id,
         "active_jobs": STATUS.get("active_jobs", {}),
+        "batch_matrix": STATUS.get("batch_matrix", {}),
         "stats": STATUS.get("stats", {}),
         "logs": STATUS.get("logs", [])[-10:],  # Last 10 logs
         "current_index": current_queue_index,
@@ -305,8 +306,7 @@ async def event_generator():
             "is_processing": is_processing,
             "current_id": current_processing_id,
             "active_jobs": STATUS.get("active_jobs", {}),
-            "stats": STATUS.get("stats", {}),
-            "active_jobs": STATUS.get("active_jobs", {}),
+            "batch_matrix": STATUS.get("batch_matrix", {}),
             "stats": STATUS.get("stats", {}),
             "logs": STATUS.get("logs", [])[-10:],
             "current_index": current_queue_index,
