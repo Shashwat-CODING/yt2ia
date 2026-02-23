@@ -12,8 +12,8 @@ import re
 import logging
 
 # S3 Config
-IA_ACCESS_KEY = "YXzY5OrREXLL6XBh"
-IA_SECRET_KEY = "m2XnL3X7xCB1pNGE"
+IA_ACCESS_KEY = "cCYXD3V4ke4YkXLI"
+IA_SECRET_KEY = "qZHSAtgw5TJXkpZa"
 UPLOAD_DELAY = 0
 
 # Status Tracking Structure
@@ -72,10 +72,10 @@ def remove_status(video_id):
 
 YTIFY_API_BASE = "https://ytify-backend.zeabur.app/api"
 INVIDIOUS_INSTANCES = [
-    "https://cursorpro-streamion.hf.space",
-    "https://cursorpro-streamion-2.hf.space",
-    "https://shashwatidr-we.hf.space",
-    "https://veltrixcode-stream.hf.space"
+  "https://ubiquitous-rugelach-b30b3f.netlify.app",
+  "https://super-duper-system.netlify.app",
+  "https://crispy-octo-waddle.netlify.app",
+  "https://www.gcx.co.in"
 ]
 
 # ---------- HELPER FUNCTIONS ----------
@@ -243,29 +243,33 @@ def wait_for_rate_limit():
     
     last_upload_time = time.time()
 
-def upload_to_ia_with_retry(identifier, input_files, metadata, max_retries=3):
-    """Upload with exponential backoff retry logic. 
-    `input_files` can be a single string filepath, or a dict of {filename: filepath} for bulk upload."""
+def upload_to_ia_with_retry(identifier, filepath, metadata, max_retries=3):
+    """Upload with exponential backoff retry logic"""
     
-    # Normalize input to always be a dict
-    if isinstance(input_files, str):
-        files_dict = {os.path.basename(input_files): input_files}
-    else:
-        files_dict = input_files
-        
     for attempt in range(max_retries):
         try:
             # Wait for rate limit before checking/uploading
             wait_for_rate_limit()
             
-            # We skip individual file check for bulk uploads here right now to optimize
+            # Check if item already exists and file is already there
+            try:
+                item = get_item(identifier)
+                filename = os.path.basename(filepath)
+                
+                if filename in [f.name for f in item.files]:
+                    logger.info(f"File {filename} already exists in {identifier}")
+                    return True, f"https://archive.org/download/{identifier}/{filename}"
+            except:
+                # Item doesn't exist yet, that's fine
+                pass
             
             # Attempt upload with minimal queue load
-            logger.info(f"Uploading {len(files_dict)} files to IA (attempt {attempt + 1}/{max_retries})...")
+            logger.info(f"Uploading to IA (attempt {attempt + 1}/{max_retries})...")
+            filename = os.path.basename(filepath)
             
             r = upload(
                 identifier,
-                files=files_dict,
+                files={filename: filepath},
                 metadata=metadata,
                 access_key=IA_ACCESS_KEY,
                 secret_key=IA_SECRET_KEY,
@@ -277,15 +281,9 @@ def upload_to_ia_with_retry(identifier, input_files, metadata, max_retries=3):
             )
             
             if r and len(r) > 0 and r[0].status_code in [200, 201]:
-                # Return list of final IA URLs if single or dict
-                if isinstance(input_files, str):
-                    ia_url = f"https://archive.org/download/{identifier}/{list(files_dict.keys())[0]}"
-                    logger.info(f"Upload successful: {ia_url}")
-                    return True, ia_url
-                else:
-                    ia_urls = {filename: f"https://archive.org/download/{identifier}/{filename}" for filename in files_dict.keys()}
-                    logger.info(f"Bulk Upload successful: {len(ia_urls)} files")
-                    return True, ia_urls
+                ia_url = f"https://archive.org/download/{identifier}/{filename}"
+                logger.info(f"Upload successful: {ia_url}")
+                return True, ia_url
             else:
                 status = r[0].status_code if (r and len(r) > 0) else 'Unknown'
                 logger.warning(f"Upload returned status: {status}")
@@ -308,7 +306,7 @@ def upload_to_ia_with_retry(identifier, input_files, metadata, max_retries=3):
 
 # ---------- MAIN PROCESSING ----------
 
-async def download_video_async(video_id, metadata_override=None):
+async def process_video_async(video_id, metadata_override=None):
     title = metadata_override.get('title', 'Unknown') if metadata_override else "Unknown"
     author = metadata_override.get('artist', 'Unknown') if metadata_override else "Unknown"
 
@@ -433,9 +431,6 @@ async def download_video_async(video_id, metadata_override=None):
                 logger.info(f"[{video_id}] {name} found no URL")
                 continue
 
-            if url:
-                stream_found = True
-
             # Try download with primary URL
             result = await try_download(video_id, name, url, fmt, headers, download_session)
             
@@ -451,13 +446,6 @@ async def download_video_async(video_id, metadata_override=None):
     if not success_file:
         set_status(video_id, "ERROR: All sources failed")
         STATUS["stats"]["failed"] += 1
-        return None, title, author, stream_found
-
-    return success_file, title, author, stream_found
-
-async def process_video_async(video_id, metadata_override=None):
-    success_file, title, author, _ = await download_video_async(video_id, metadata_override)
-    if not success_file:
         remove_status(video_id)
         return
 
@@ -517,174 +505,6 @@ def process_video_task(video_id, metadata_override=None):
         logger.error(f"Task error: {e}")
         remove_status(video_id)
 
-async def batch_process_videos(videos_list, artist_id=None):
-    """
-    Process a list of videos concurrently in chunks.
-    Uploads them to Internet Archive in bulk.
-    """
-    chunk_size = 10
-    
-    for i in range(0, len(videos_list), chunk_size):
-        chunk = videos_list[i:i+chunk_size]
-        
-        # Initialize batch matrix for this chunk
-        vids = [item['vid'] for item in chunk]
-        STATUS["batch_matrix"] = {
-            "vids": vids,
-            "stream": {vid: False for vid in vids},
-            "download": {vid: False for vid in vids},
-            "upload": {vid: False for vid in vids},
-            "url": {vid: '-' for vid in vids}
-        }
-        
-        # Initialize status for all videos in chunk
-        for item in chunk:
-            set_status(item['vid'], "Starting...")
-
-        logger.info(f"Starting batch download for {len(chunk)} videos...")
-        
-        # Concurrently download videos
-        download_tasks = [download_video_async(item['vid'], item['meta']) for item in chunk]
-        results = await asyncio.gather(*download_tasks, return_exceptions=True)
-        
-        # Process results and prepare files for bulk upload
-        files_to_upload = {}
-        success_items = []
-        
-        for k, result in enumerate(results):
-            item_data = chunk[k]
-            vid = item_data['vid']
-            meta = item_data['meta']
-            
-            if isinstance(result, tuple) and len(result) == 4:
-                filepath, title, author, stream_found = result
-                STATUS["batch_matrix"]["stream"][vid] = stream_found
-                if filepath:
-                    STATUS["batch_matrix"]["download"][vid] = True
-                    filename = os.path.basename(filepath)
-                    files_to_upload[filename] = filepath
-                    
-                    # Update metadata with final retrieved ones
-                    meta['final_title'] = title
-                meta['final_author'] = author
-                
-                success_items.append({
-                    "vid": vid,
-                    "filepath": filepath,
-                    "filename": filename,
-                    "meta": meta
-                })
-                set_status(vid, "Uploading to Internet Archive in batch...")
-            else:
-                # Failed video
-                logger.error(f"[{vid}] Failed to download in batch.")
-                remove_status(vid)
-                STATUS["queue"] = [q_item for q_item in STATUS["queue"] if q_item["id"] != vid]
-
-        if not files_to_upload:
-            logger.warning("No files downloaded successfully in this batch.")
-        else:
-            # Bulk upload to IA
-            logger.info(f"Bulk uploading {len(files_to_upload)} files...")
-            aid = artist_id if artist_id else None
-            
-            # If all items are from the same artist, use their aid. Otherwise, a generic backup name.
-            if aid is None and len(success_items) > 0 and 'artist_id' in success_items[0]['meta']:
-                 aid = success_items[0]['meta']['artist_id']
-    
-            identifier = f"yt2ia-{aid}" if aid else "YTMBACKUP"
-            
-            md = {
-                'title': "Batch Upload" if aid else "Mixed Uploads",
-                'creator': success_items[0]['meta']['final_author'] if aid else "yt2ia",
-                'mediatype': 'audio',
-                'collection': 'opensource_audio',
-                'description': f'Batch audio uploads from YouTube',
-                'subject': ['youtube', 'audio', 'music']
-            }
-            
-            success, ia_urls_dict = upload_to_ia_with_retry(identifier, files_to_upload, md)
-
-        
-        if success and ia_urls_dict:
-            for item in success_items:
-                vid = item['vid']
-                filepath = item['filepath']
-                filename = item['filename']
-                meta = item['meta']
-                
-                ia_url = ia_urls_dict.get(filename)
-                title = meta.get('final_title', 'Unknown')
-                author = meta.get('final_author', 'Unknown')
-                
-                if ia_url:
-                    STATUS["batch_matrix"]["upload"][vid] = True
-                    STATUS["batch_matrix"]["url"][vid] = ia_url
-                    save_entry(f"{title} - {author}", ia_url)
-                    logger.info(f"[{vid}] Added song to Main DB: {title} - {author}")
-                    
-                    VIDEO_ID_CACHE.add(vid)
-                    STATUS["stats"]["processed"] += 1
-                    STATUS["stats"]["failed"] -= 1 # adjust back if it previously failed (not needed here usually but fine)
-                    
-                    logger.info(f"[{vid}] Upload Complete: {ia_url}")
-                    set_status(vid, "Complete!")
-                else:
-                    logger.warning(f"[{vid}] URL not returned from bulk upload")
-                    set_status(vid, "ERROR: URL mapping missing in bulk upload")
-                
-                # Cleanup and remove status
-                if os.path.exists(filepath):
-                    os.remove(filepath)
-                remove_status(vid)
-                STATUS["queue"] = [q_item for q_item in STATUS["queue"] if q_item["id"] != vid]
-        elif files_to_upload:
-            # Entire batch upload failed
-            logger.error(f"Bulk upload failed for {len(files_to_upload)} files.")
-            for item in success_items:
-                vid = item['vid']
-                filepath = item['filepath']
-                set_status(vid, "ERROR: Batch Upload failed")
-                if os.path.exists(filepath):
-                    os.remove(filepath)
-                remove_status(vid)
-                STATUS["queue"] = [q_item for q_item in STATUS["queue"] if q_item["id"] != vid]
-
-        # Log ASCII matrix to terminal at the end of the batch
-        b = STATUS["batch_matrix"]
-        if b and b.get("vids"):
-            def get_ico(val):
-                return '✅' if val is True else ('❌' if val is False else '⏳')
-            
-            # Print table
-            logger.info("\n" + "="*80)
-            logger.info("BATCH COMPLETION MATRIX")
-            logger.info("="*80)
-            
-            vids = b["vids"]
-            col_width = 15
-            header_row = "".ljust(15) + "".join([str(v)[:col_width].ljust(col_width) for v in vids])
-            logger.info(header_row)
-            logger.info("-" * len(header_row))
-            
-            stream_row = "Stream".ljust(15) + "".join([get_ico(b["stream"].get(v)).ljust(col_width - 1) + " " for v in vids])
-            logger.info(stream_row)
-            
-            dl_row = "Download".ljust(15) + "".join([get_ico(b["download"].get(v)).ljust(col_width - 1) + " " for v in vids])
-            logger.info(dl_row)
-            
-            ul_row = "Upload".ljust(15) + "".join([get_ico(b["upload"].get(v)).ljust(col_width - 1) + " " for v in vids])
-            logger.info(ul_row)
-            
-            logger.info("-" * len(header_row))
-            for v in vids:
-                url = b["url"].get(v, "-")
-                if url != "-":
-                    logger.info(f"{v.ljust(15)} {url}")
-            logger.info("="*80 + "\n")
-
-
-
 def process_artist_task(aid):
     try:
         r = requests.get(f"{YTIFY_API_BASE}/artist/{aid}", timeout=10)
@@ -700,30 +520,32 @@ def process_playlist_task(pid, artist_id=None):
         r = requests.get(f"{YTIFY_API_BASE}/playlist/{pid}", timeout=10)
         if r.status_code==200:
             tracks = r.json().get('tracks', [])
+
+            # existing = get_all_video_ids()
             existing = VIDEO_ID_CACHE
             logger.info(f"Deduplication: Found {len(existing)} existing video IDs in Cache")
-            
-            # Filter tracks we actually need to process
-            to_process = []
             for t in tracks:
                 vid = t.get('videoId')
                 if vid and vid not in existing:
+                    # Don't add to DB Queue! Directly process.
+                    # add_to_queue(vid)  <-- REMOVED
+                    
                     STATUS["queue"].append({"id": vid, "title": t.get('title')})
                     meta = {'title': t.get('title'), 'artist': t.get('artist') or t.get('author')}
                     if artist_id:
                         meta['artist_id'] = artist_id
                     
-                    to_process.append({"vid": vid, "meta": meta})
+                    # Process
+                    # Note: This blocks until completion because process_video_task calls loop.run_until_complete
+                    # This effectively serializes the playlist processing, which is safer for rate limits anyway.
+                    logger.info(f"[{vid}] Starting processing from Artist/Playlist")
+                    process_video_task(vid, meta)
                     
-            if to_process:
-                logger.info(f"Processing {len(to_process)} playlist tracks in bulk...")
-                try:
-                    loop = asyncio.new_event_loop()
-                    asyncio.set_event_loop(loop)
-                    loop.run_until_complete(batch_process_videos(to_process, artist_id))
-                    loop.close()
-                except Exception as e:
-                    logger.error(f"Batch playlist processing error: {e}")
+                    # Remove from in-memory queue display if needed
+                    # logic to remove from STATUS['queue'] is not explicitly here for individual completion
+                    # but STATUS['queue'] is just a list. 
+                    # We can remove it:
+                    STATUS["queue"] = [item for item in STATUS["queue"] if item["id"] != vid]
                     
     except Exception as e:
         logger.error(f"Playlist task error: {e}")
